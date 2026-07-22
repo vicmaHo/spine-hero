@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { createMockPostureSource } from '../contracts/mockSource';
 import type { PostureError } from '../contracts/posture';
 
 const ERROR_LABELS: Record<PostureError['kind'], string> = {
@@ -11,24 +10,22 @@ const ERROR_LABELS: Record<PostureError['kind'], string> = {
 };
 
 export function ControlPanel() {
-  const {
-    isMonitoring,
-    lastError,
-    sourceType,
-    startMonitoring,
-    stopMonitoring,
-    calibrate,
-    swapSource,
-  } = useAppStore();
+  const isRunning = useAppStore((s) => s.isRunning);
+  const lastError = useAppStore((s) => s.lastError);
+  const source = useAppStore((s) => s.source);
+  const start = useAppStore((s) => s.start);
+  const stop = useAppStore((s) => s.stop);
+  const calibrate = useAppStore((s) => s.calibrate);
+  const setSource = useAppStore((s) => s.setSource);
 
   const [isCalibrating, setIsCalibrating] = useState(false);
 
   const handleStart = async () => {
-    await startMonitoring();
+    await start();
   };
 
   const handleStop = () => {
-    stopMonitoring();
+    stop();
   };
 
   const handleCalibrate = async () => {
@@ -41,12 +38,8 @@ export function ControlPanel() {
   };
 
   const handleSourceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value as 'mock' | 'camera';
-    if (value === 'mock') {
-      const mockSource = createMockPostureSource();
-      swapSource(mockSource, 'mock');
-    }
-    // Cámara no disponible aún — no se hace nada
+    const value = e.target.value as 'mock' | 'real';
+    setSource(value);
   };
 
   return (
@@ -57,21 +50,21 @@ export function ControlPanel() {
       <div className="flex gap-2">
         <button
           onClick={handleStart}
-          disabled={isMonitoring}
+          disabled={isRunning}
           className="px-3 py-1.5 rounded bg-green-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-green-500 transition-colors"
         >
           Iniciar
         </button>
         <button
           onClick={handleStop}
-          disabled={!isMonitoring}
+          disabled={!isRunning}
           className="px-3 py-1.5 rounded bg-red-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-red-500 transition-colors"
         >
           Detener
         </button>
         <button
           onClick={handleCalibrate}
-          disabled={isMonitoring || isCalibrating}
+          disabled={isRunning || isCalibrating}
           className="px-3 py-1.5 rounded bg-blue-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-500 transition-colors"
         >
           {isCalibrating ? 'Calibrando…' : 'Calibrar'}
@@ -80,9 +73,7 @@ export function ControlPanel() {
 
       {/* Indicador de calibración */}
       {isCalibrating && (
-        <p className="text-xs text-blue-400 animate-pulse">
-          Calibración en progreso…
-        </p>
+        <p className="text-xs text-blue-400 animate-pulse">Calibración en progreso…</p>
       )}
 
       {/* Selector de fuente */}
@@ -92,13 +83,13 @@ export function ControlPanel() {
         </label>
         <select
           id="source-select"
-          value={sourceType === 'camera' ? 'camera' : 'mock'}
+          value={source}
           onChange={handleSourceChange}
-          disabled={isMonitoring}
+          disabled={isRunning}
           className="bg-gray-700 text-white text-xs rounded px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <option value="mock">Mock</option>
-          <option value="camera" disabled>Cámara (No disponible)</option>
+          <option value="real" disabled>Cámara (No disponible)</option>
         </select>
       </div>
 
