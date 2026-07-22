@@ -6,8 +6,8 @@ Implementar el andamiaje front-end de SpineHero: store global (Zustand), persist
 
 ## Tasks
 
-- [ ] 1. Set up persistence layer — database initialization and data models
-  - [ ] 1.1 Create `src/storage/db.ts` with IndexedDB initialization
+- [x] 1. Set up persistence layer — database initialization and data models
+  - [x] 1.1 Create `src/storage/db.ts` with IndexedDB initialization
     - Define `SpineHeroDB` interface with `minutes` and `profile` object stores
     - Implement `openSpineHeroDB()` using `idb` library
     - `minutes` store with compound key `[date, minute]`
@@ -15,7 +15,7 @@ Implementar el andamiaje front-end de SpineHero: store global (Zustand), persist
     - Database name: `spinehero`
     - _Requirements: 8.1, 9.1_
 
-  - [ ] 1.2 Create `src/storage/minuteBuffer.ts` with in-memory accumulator
+  - [x] 1.2 Create `src/storage/minuteBuffer.ts` with in-memory accumulator
     - Define `MinuteEntry` interface (date, minute, avgScore, dominantStatus, goodSeconds)
     - Implement `createMinuteBuffer()` factory returning `push(frame)`, `flush()`, and `reset()` methods
     - `push` only accumulates frames with status GOOD or BAD (skip AWAY, CALIBRATING, LOW_CONF)
@@ -23,7 +23,7 @@ Implementar el andamiaje front-end de SpineHero: store global (Zustand), persist
     - `flush` returns `null` if no qualifying frames were accumulated
     - _Requirements: 8.2, 8.6, 10.1, 10.2_
 
-  - [ ] 1.3 Create `src/storage/profileStore.ts` with profile read/write
+  - [x] 1.3 Create `src/storage/profileStore.ts` with profile read/write
     - Define `ProfileRecord` interface (gameState + calibration)
     - Implement `loadProfile()` — reads from IndexedDB, returns `null` if not found or on error
     - Implement `saveProfile(record)` — writes to IndexedDB, logs error on failure
@@ -41,8 +41,8 @@ Implementar el andamiaje front-end de SpineHero: store global (Zustand), persist
     - **Property 9: Profile persistence round-trip**
     - **Validates: Requirements 9.2**
 
-- [ ] 2. Implement minute writer and profile debounce logic
-  - [ ] 2.1 Create `src/storage/minuteWriter.ts` — periodic minute boundary writer
+- [x] 2. Implement minute writer and profile debounce logic
+  - [x] 2.1 Create `src/storage/minuteWriter.ts` — periodic minute boundary writer
     - Implement `startMinuteWriter()` that returns an unsubscribe function
     - Use `setInterval` at 1-second resolution to detect minute boundary crossings
     - On boundary crossing: flush the minute buffer and write entry to IndexedDB
@@ -51,7 +51,7 @@ Implementar el andamiaje front-end de SpineHero: store global (Zustand), persist
     - Log errors on failed writes without crashing
     - _Requirements: 8.2, 8.3, 8.5, 10.1, 10.3, 10.4_
 
-  - [ ] 2.2 Create `src/storage/profileDebounce.ts` — debounced profile saver
+  - [x] 2.2 Create `src/storage/profileDebounce.ts` — debounced profile saver
     - Implement a debounced writer that writes at most once per 5 seconds
     - Expose `scheduleProfileSave(record: ProfileRecord)` and `flushNow()`
     - Calibration writes bypass debounce (immediate)
@@ -67,30 +67,30 @@ Implementar el andamiaje front-end de SpineHero: store global (Zustand), persist
     - **Property 10: Profile write debounce — at most one write per 5 seconds**
     - **Validates: Requirements 9.3**
 
-- [ ] 3. Checkpoint — Ensure all tests pass
+- [x] 3. Checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Implement the global store (`useAppStore`)
-  - [ ] 4.1 Create `src/store/useAppStore.ts` with Zustand store
+- [x] 4. Implement the global store (`useAppStore`)
+  - [x] 4.1 Create `src/store/useAppStore.ts` with Zustand store
     - Define `AppState` interface with: `currentFrame`, `gameState`, `sourceType`, `isMonitoring`, `lastError`, `pendingEvents`
     - Initialize `gameState` from persisted profile (via `loadProfile()`) or `INITIAL_GAME_STATE`
     - Expose actions: `startMonitoring`, `stopMonitoring`, `swapSource`, `calibrate`
     - Depend exclusively on `PostureSource` interface, never concrete implementations
     - _Requirements: 1.1, 2.3_
 
-  - [ ] 4.2 Implement subscription lifecycle in the store
+  - [x] 4.2 Implement subscription lifecycle in the store
     - `startMonitoring`: call `source.start()`, on success store unsubscribe from `source.subscribe()`, set `isMonitoring: true`
     - On frame received: update `currentFrame`, call `tick(gameState, frame, Date.now())`, replace `gameState` with result
     - `stopMonitoring`: invoke stored unsubscribe, call `source.stop()`, reset `currentFrame` to `null`, set `isMonitoring: false`
     - If `start()` rejects: stay in stopped state, store error in `lastError`, do not call `subscribe()`
     - _Requirements: 1.2, 1.3, 1.4, 1.7, 2.4_
 
-  - [ ] 4.3 Implement source swap guard in the store
+  - [x] 4.3 Implement source swap guard in the store
     - `swapSource` rejects (returns `false`) if `isMonitoring === true`
     - `swapSource` replaces active source and updates `sourceType` when monitoring is stopped
     - _Requirements: 1.5, 1.6_
 
-  - [ ] 4.4 Wire store to persistence layer
+  - [x] 4.4 Wire store to persistence layer
     - On `gameState` changes: schedule profile save via debounced writer
     - On `calibrate()` success: save calibration immediately via `saveCalibration()`
     - Connect minute buffer: push frames to buffer on each subscription callback
@@ -109,11 +109,11 @@ Implementar el andamiaje front-end de SpineHero: store global (Zustand), persist
     - Test that store does not contain scoring or game logic inline
     - _Requirements: 1.1, 2.1, 2.2_
 
-- [ ] 5. Checkpoint — Ensure all tests pass
+- [x] 5. Checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Implement Dashboard UI
-  - [ ] 6.1 Create `src/ui/Dashboard.tsx` with layout structure and slots
+- [x] 6. Implement Dashboard UI
+  - [x] 6.1 Create `src/ui/Dashboard.tsx` with layout structure and slots
     - Define `DashboardProps` with optional `avatarCanvas` and `benchmarksPanel` (typed as `ReactNode`)
     - Render slot containers with `data-testid="slot-avatar-canvas"` (min 256×256px) and `data-testid="slot-benchmarks-panel"` (min 320×200px)
     - Show empty-state indicator text ("Avatar Canvas", "Benchmarks Panel") when no ReactNode provided
@@ -121,20 +121,20 @@ Implementar el andamiaje front-end de SpineHero: store global (Zustand), persist
     - Dark theme, all labels in Spanish
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 4.4, 4.5_
 
-  - [ ] 6.2 Implement `StatusIndicator` and `ScoreBar` sub-components
+  - [x] 6.2 Implement `StatusIndicator` and `ScoreBar` sub-components
     - `StatusIndicator`: colored background per status (verde=GOOD, rojo=BAD, gris=AWAY, ámbar=CALIBRATING, púrpura=LOW_CONF) + Spanish label
     - `ScoreBar`: progress bar 0–100 showing `PostureFrame.score` as integer + bar fill
     - Default state (no frame): CALIBRATING color, score 0, empty bar
     - _Requirements: 4.1, 4.2, 4.6_
 
-  - [ ] 6.3 Implement `DayStats` sub-component
+  - [x] 6.3 Implement `DayStats` sub-component
     - Display accumulated seconds in GOOD posture formatted as MM:SS
     - Display today's average score (integer 0–100, excluding AWAY/CALIBRATING/LOW_CONF frames)
     - Display current flow streak as MM:SS
     - Default: "0:00" for time values, 0 for score
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-  - [ ] 6.4 Implement `ControlPanel` sub-component
+  - [x] 6.4 Implement `ControlPanel` sub-component
     - Start button: invokes `startMonitoring()`, disables on success, enables stop
     - Stop button: invokes `stopMonitoring()`, disables self, enables start
     - Calibrate button: invokes `calibrate()`, disables during promise, shows progress indicator
@@ -143,7 +143,7 @@ Implementar el andamiaje front-end de SpineHero: store global (Zustand), persist
     - Stop button disabled when not monitoring
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7_
 
-  - [ ] 6.5 Implement video thumbnail placeholder
+  - [x] 6.5 Implement video thumbnail placeholder
     - Reserve 4:3 aspect ratio area for camera feed preview
     - Show placeholder icon when camera not active
     - _Requirements: 4.3_
@@ -156,14 +156,14 @@ Implementar el andamiaje front-end de SpineHero: store global (Zustand), persist
     - Test error message display
     - _Requirements: 4.1, 4.6, 5.6, 5.7, 7.3, 7.4, 7.5_
 
-- [ ] 7. Wire Dashboard into the app entry point
-  - [ ] 7.1 Update `src/App.tsx` to render Dashboard connected to the store
+- [x] 7. Wire Dashboard into the app entry point
+  - [x] 7.1 Update `src/App.tsx` to render Dashboard connected to the store
     - Import `useAppStore` and pass relevant state/actions to Dashboard
     - Initialize the store with persisted profile on app start
     - Ensure mock source is the default active source
     - _Requirements: 2.3, 5.4_
 
-- [ ] 8. Checkpoint — Ensure all tests pass
+- [x] 8. Checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 9. Mock source property test (complement to existing tests)
@@ -171,7 +171,7 @@ Implementar el andamiaje front-end de SpineHero: store global (Zustand), persist
     - **Property 4: Mock source cycle produces correct frame for any time offset**
     - **Validates: Requirements 3.2, 3.3, 3.4, 3.5, 3.6, 3.7**
 
-- [ ] 10. Final checkpoint — Ensure all tests pass
+- [x] 10. Final checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
