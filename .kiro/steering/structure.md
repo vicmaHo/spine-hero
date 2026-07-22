@@ -22,7 +22,7 @@ spinehero/
 ├─ public/
 │  ├─ models/            pose_landmarker_lite.task                → V
 │  ├─ wasm/              runtime de MediaPipe                     → V
-│  ├─ sprites/           hero.png (256×32, 8 frames)              → M
+│  ├─ sprites/           hero.png (1024×128, 8 frames de 128×128)  → M
 │  └─ fonts/             Press Start 2P auto-alojada              → M
 ├─ fixtures/             sesiones de landmarks en JSON            → V
 ├─ src/

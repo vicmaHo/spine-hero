@@ -50,13 +50,13 @@ decide reproducir un sonido o lanzar una notificación es `feedback/`.
 
 ## Sprite y canvas
 
-- Sheet único en `/sprites/hero.png`: **256×32, ocho frames de 32×32** en este
-  orden fijo, no lo cambies:
+- Sheet único en `/sprites/hero.png`: **1024×128, ocho frames de 128×128** en
+  este orden fijo, no lo cambies:
   `idle0, idle1, happy0, happy1, sad0, sad1, faint0, faint1`.
 - Paleta de exactamente 8 colores. Anótalos en un comentario del componente.
-- Escalado ×4 con `ctx.imageSmoothingEnabled = false` **y** `image-rendering:
-  pixelated` en el CSS del canvas. Las dos cosas: una sola no basta en todos los
-  navegadores.
+- Renderiza a tamaño nativo (128×128) o escala con `ctx.imageSmoothingEnabled =
+  false` **y** `image-rendering: pixelated` en el CSS del canvas. Las dos cosas:
+  una sola no basta en todos los navegadores.
 - Alternancia entre los dos frames del estado cada 500 ms.
 - Tinte global según el estado con `globalCompositeOperation = 'multiply'`.
 - Fuente **Press Start 2P auto-alojada** en `/fonts/`. Nunca desde Google Fonts.
