@@ -1,0 +1,515 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "Crear `src/feedback/constants.ts` con todas las constantes exportadas (sprite, tinte, HUD, audio, partículas, notificaciones).": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784184630
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784195646
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784285458
+      }
+    ],
+    "Crear `src/feedback/spriteSheet.ts`: función `loadSpriteSheet()` que carga `/sprites/hero.png` y `drawSprite()` que recorta y dibuja el frame en el canvas a 128×128 (1:1, sin escalado) con `imageSmoothingEnabled = false`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784184784
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784292613
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784345222
+      }
+    ],
+    "Colocar el fichero de fuente `PressStart2P-Regular.ttf` en `public/fonts/`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784184907
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784351893
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784366887
+      }
+    ],
+    "Verificar que el sprite sheet `public/sprites/hero.png` existe (1024×128, 8 frames de 128×128).": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784185064
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784373501
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784380882
+      }
+    ],
+    "Crear `src/feedback/renderer.ts` con `createRenderer(opts)` que devuelve `{ start, stop, triggerParticles }`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784185190
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784388364
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784470154
+      }
+    ],
+    "Implementar el bucle `requestAnimationFrame` con alternancia de frames cada 500 ms basada en `performance.now()`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784185302
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784473598
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784477406
+      }
+    ],
+    "Implementar el tinte por mood con `globalCompositeOperation = 'source-atop'` y restauración a `source-over`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784185412
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784481012
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784484349
+      }
+    ],
+    "Cargar la fuente Press Start 2P con `FontFace` API al iniciar el renderer.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784185494
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784487837
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784491563
+      }
+    ],
+    "Asegurar que `stop()` cancela el rAF pendiente.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784185630
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784495364
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784498617
+      }
+    ],
+    "Crear `src/feedback/hud.ts` con función `drawHUD(ctx, state)`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784185720
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784507129
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784654429
+      }
+    ],
+    "Dibujar corazones de HP (5 corazones, lleno/medio/vacío) usando la fuente cargada o rects coloreados.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784185902
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784658190
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784661670
+      }
+    ],
+    "Dibujar barra de Flow con caracteres de bloque (▓/░).": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784186084
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784665101
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784668461
+      }
+    ],
+    "Dibujar nivel actual y barra de progreso de XP.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784186223
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784672172
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784676210
+      }
+    ],
+    "Integrar `drawHUD` en el bucle de render de `renderer.ts`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784186333
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784679679
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784683120
+      }
+    ],
+    "Crear `src/feedback/particles.ts` con `createParticleSystem()` que expone `{ emit, update, draw, isActive }`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784186492
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784690842
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784842846
+      }
+    ],
+    "Implementar emisión de ≥8 partículas con velocidades aleatorias en abanico.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784186598
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784846484
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784850045
+      }
+    ],
+    "Implementar actualización con gravedad suave y decaimiento de `life` (duración ≤ 1 s).": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784186708
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784853454
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784856961
+      }
+    ],
+    "Implementar dibujado de rects pequeños con opacidad proporcional a `life`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784186854
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784860725
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784864743
+      }
+    ],
+    "Integrar el sistema de partículas en el bucle de render y conectar `triggerParticles()`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784187012
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784868621
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784872372
+      }
+    ],
+    "Crear `src/feedback/synth.ts` con `initAudio()`, `playSound()`, `setMuted()`, `isMuted()`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784187121
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784881718
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785038384
+      }
+    ],
+    "Implementar creación perezosa del `AudioContext` en el primer gesto del usuario (click/keydown).": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784187239
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785041876
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785045601
+      }
+    ],
+    "Implementar `GainNode` maestro para mute global.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784187347
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785048777
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785052866
+      }
+    ],
+    "Implementar envolvente ADSR parametrizada desde `constants.ts`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784187455
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785056206
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785059983
+      }
+    ],
+    "Implementar los 4 sonidos: `LEVEL_UP` (arpegio ascendente), `HP_LOST` (glissando descendente), `FLOW_MILESTONE` (arpegio rápido), `ACHIEVEMENT` (fanfarria).": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784187551
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785063711
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785067977
+      }
+    ],
+    "Crear `src/feedback/notifications.ts` con `requestNotificationPermission()` y `checkAndNotifyFlowMilestone()`.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784187655
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785075516
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785150904
+      }
+    ],
+    "Implementar lógica de disparo cuando `flowSeconds >= nextMilestone - 120` y no se haya notificado ya ese hito.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784187789
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785154854
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785158926
+      }
+    ],
+    "Gestionar el flag de \"ya notificado\" para evitar duplicados dentro de la misma racha.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784188001
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785162791
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785166690
+      }
+    ],
+    "Crear `src/feedback/particles.test.ts`: verificar que `emit()` genera partículas, `update()` las mueve, y tras 1 s no quedan activas.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784188120
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785190460
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785194550
+      }
+    ],
+    "Crear `src/feedback/synth.test.ts`: verificar que `playSound` no lanza sin AudioContext, y que `setMuted` alterna el gain.": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784188225
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785198767
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785202797
+      }
+    ],
+    "Crear `src/feedback/notifications.test.ts`: verificar lógica de hito inminente (dispara a tiempo, no repite, no dispara fuera de rango).": [
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784784188336
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785207138
+      },
+      {
+        "executionId": "50a99c46-9005-46db-9641-1d09e62c5fac",
+        "chatSessionId": "sess_4d5b3195-d604-4df1-9ba1-ba5472af1382",
+        "timestamp": 1784785211302
+      }
+    ]
+  }
+}
