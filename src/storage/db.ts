@@ -37,3 +37,39 @@ export function openSpineHeroDB(): Promise<IDBPDatabase<SpineHeroDB>> {
     },
   });
 }
+
+let dbPromise: Promise<IDBPDatabase<SpineHeroDB>> | null = null;
+
+function getDB(): Promise<IDBPDatabase<SpineHeroDB>> {
+  if (!dbPromise) {
+    dbPromise = openSpineHeroDB();
+  }
+  return dbPromise;
+}
+
+/** Escribe una entrada de minuto en IndexedDB (put = upsert). */
+export async function appendMinute(entry: MinuteEntry): Promise<void> {
+  const db = await getDB();
+  await db.put('minutes', entry);
+}
+
+/** Devuelve todas las entradas de un día dado (formato YYYY-MM-DD). */
+export async function getDay(date: string): Promise<MinuteEntry[]> {
+  const db = await getDB();
+  // Rango: desde [date, 0] hasta [date, 1439]
+  const range = IDBKeyRange.bound([date, 0], [date, 1439]);
+  return db.getAll('minutes', range);
+}
+
+/** Lee el perfil guardado. Devuelve null si no existe. */
+export async function getProfile(): Promise<ProfileRecord | null> {
+  const db = await getDB();
+  const record = await db.get('profile', 'current');
+  return record ?? null;
+}
+
+/** Guarda (o sobreescribe) el perfil completo. */
+export async function saveProfile(profile: ProfileRecord): Promise<void> {
+  const db = await getDB();
+  await db.put('profile', profile, 'current');
+}
