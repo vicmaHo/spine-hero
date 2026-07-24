@@ -7,9 +7,11 @@ import { createMockPostureSource } from '../contracts/mockSource';
 import { tick } from '../game/engine';
 import { loadProfile } from '../storage/profileStore';
 import { scheduleProfileSave, flushNow } from '../storage/profileDebounce';
-import { saveCalibration } from '../storage/profileStore';
+import { saveCalibration, saveProfile } from '../storage/profileStore';
 import { startMinuteWriter } from '../storage/minuteWriter';
 import type { MinuteWriter } from '../storage/minuteWriter';
+import { createSynchronizer } from '../storage/synchronizer';
+import type { Synchronizer } from '../storage/synchronizer';
 
 type SourceType = 'real' | 'mock';
 
@@ -28,18 +30,25 @@ interface AppState {
   perf: PerfStats;
   isRunning: boolean;
   lastError: PostureError | null;
+  isAuthenticated: boolean;
+  teamCode: string | null;
 
   // --- Acciones ---
   setSource: (type: SourceType) => void;
+  setTeamCode: (code: string | null) => void;
   start: () => Promise<void>;
   stop: () => void;
   calibrate: () => Promise<void>;
   pushFrame: (frame: PostureFrame) => void;
+  onAuthReady: () => void;
+  onAuthLost: () => void;
+  syncNow: () => Promise<void>;
 }
 
 // --- Internal (fuera del estado expuesto para no serializar) ---
 let _unsubscribe: (() => void) | null = null;
 let _minuteWriter: MinuteWriter | null = null;
+let _synchronizer: Synchronizer | null = null;
 let _sourceInstance: { start(): Promise<void>; stop(): void; calibrate(): Promise<CalibrationBaseline>; subscribe(fn: (f: PostureFrame) => void): () => void } | null = null;
 
 // Tracking para cálculo de perf
@@ -74,12 +83,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   perf: { p50: 0, p95: 0, fps: 0 },
   isRunning: false,
   lastError: null,
+  isAuthenticated: false,
+  teamCode: null,
 
   // --- Acciones ---
 
   setSource: (type: SourceType) => {
     if (get().isRunning) return; // no cambiar fuente mientras corre
     set({ source: type });
+  },
+
+  setTeamCode: (code: string | null) => {
+    set({ teamCode: code });
+    // Persistir de inmediato en el perfil: sobrevive a recargas y el
+    // synchronizer lo lee de IndexedDB para escribirlo en cada DailyRecord.
+    void saveProfile({
+      gameState: get().game,
+      calibration: get().calibration,
+      teamCode: code ?? undefined,
+    });
   },
 
   start: async () => {
@@ -152,7 +174,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     // Persistencia: profile debounce si cambió el game state
     if (result.state !== game) {
-      scheduleProfileSave({ gameState: result.state, calibration: get().calibration });
+      scheduleProfileSave({
+        gameState: result.state,
+        calibration: get().calibration,
+        teamCode: get().teamCode ?? undefined,   // no sobrescribir el código al guardar
+      });
     }
 
     // Perf tracking
@@ -167,6 +193,23 @@ export const useAppStore = create<AppState>((set, get) => ({
       perf: computePerf(),
     });
   },
+
+  onAuthReady: () => {
+    _synchronizer = createSynchronizer();
+    _synchronizer.start();
+    set({ isAuthenticated: true });
+  },
+
+  onAuthLost: () => {
+    _synchronizer?.stop();
+    _synchronizer = null;
+    set({ isAuthenticated: false });
+  },
+
+  // Fuerza un checkpoint inmediato (para verificación/manual; el automático es cada 5 min).
+  syncNow: async () => {
+    await _synchronizer?.syncNow();
+  },
 }));
 
 // Carga el perfil persistido al iniciar la app
@@ -175,6 +218,7 @@ loadProfile().then((record) => {
     useAppStore.setState({
       game: record.gameState,
       calibration: record.calibration,
+      teamCode: record.teamCode ?? null,
     });
   }
 });

@@ -4,6 +4,9 @@ import { VideoThumbnail } from './VideoThumbnail';
 import { StatusIndicator } from './StatusIndicator';
 import { AvatarCanvas } from './AvatarCanvas';
 import { BenchmarksPanel } from './BenchmarksPanel';
+import { SyncControl } from './SyncControl';
+import { TeamCodeInput } from './TeamCodeInput';
+import { RankingPanel } from './RankingPanel';
 import type { PostureError } from '../contracts/posture';
 
 const STATUS_BG: Record<string, string> = {
@@ -114,6 +117,12 @@ export function Dashboard() {
               Error: {ERROR_LABELS[lastError.kind]}
             </p>
           )}
+
+          {/* Código de equipo + login opcional para sincronización */}
+          <div className="border-t border-gray-800 pt-3 flex flex-col gap-3">
+            <TeamCodeInput />
+            <SyncControl />
+          </div>
         </div>
 
         {/* ═══ Fila inferior: slots para integraciones día 3 ═══ */}
@@ -126,6 +135,11 @@ export function Dashboard() {
         {/* Panel de benchmarks (V) */}
         <div className="col-span-12 lg:col-span-6">
           <BenchmarksPanel />
+        </div>
+
+        {/* Ranking de equipo (C) */}
+        <div className="col-span-12">
+          <RankingPanel />
         </div>
       </div>
     </div>

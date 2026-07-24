@@ -6,6 +6,7 @@ import { openSpineHeroDB } from './db';
 export interface ProfileRecord {
   gameState: GameState;
   calibration: CalibrationBaseline | null;
+  teamCode?: string;       // código de sala para el ranking; opcional
 }
 
 const PROFILE_KEY = 'current';
@@ -49,6 +50,7 @@ export async function saveCalibration(baseline: CalibrationBaseline): Promise<vo
     const record: ProfileRecord = {
       gameState: existing?.gameState ?? INITIAL_GAME_STATE,
       calibration: baseline,
+      teamCode: existing?.teamCode,   // no perder el código al calibrar
     };
     await db.put('profile', record, PROFILE_KEY);
   } catch (err) {

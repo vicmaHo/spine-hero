@@ -13,6 +13,7 @@ export interface MinuteEntry {
 export interface ProfileRecord {
   gameState: GameState;
   calibration: CalibrationBaseline | null;
+  teamCode?: string;       // código de sala para el ranking; opcional
 }
 
 export interface SpineHeroDB extends DBSchema {

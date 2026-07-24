@@ -10,13 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-amplify/backend": "^1.23.0",
+    "@aws-amplify/ui-react": "^6.15.4",
     "@mediapipe/tasks-vision": "^0.10.35",
+    "aws-amplify": "^6.19.0",
     "idb": "^8.0.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@aws-amplify/backend-cli": "^1.8.3",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.2",
