@@ -1,0 +1,158 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Crear `fixtures/` con 4 sesiones JSON de landmarks: `session-good.json` (60 s erguido), `session-slouch.json` (erguido 15 s → encorvado), `session-lean.json` (se acerca sin encorvarse), `session-away.json` (erguido 20 s → se levanta).": [
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784767300033
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784767313477
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784782416008
+      }
+    ],
+    "2. Crear `src/posture/metrics.ts`: funciones `computeMetrics(landmarks, baseline)` y `computeRawMetrics(landmarks)`. Solo usa x, y, visibility. Normaliza por shoulderWidth. Test en `src/posture/__tests__/metrics.test.ts`.": [
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784767300226
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784782423751
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784782578093
+      }
+    ],
+    "3. Crear `src/posture/scoring.ts`: `computeRawScore(metrics)` con pesos exportados, `applyEma(prev, current, alpha)`. Clamp [0, 100]. Test en `src/posture/__tests__/scoring.test.ts`.": [
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784767300361
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784782585028
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784782794658
+      }
+    ],
+    "4. Crear `src/posture/stateMachine.ts`: `transition(state, score, confidence, landmarkCount, now)` con constantes de histéresis y debounce exportadas. Test en `src/posture/__tests__/stateMachine.test.ts` cubriendo: GOOD→BAD (8 s), BAD→GOOD (3 s), →LOW_CONF (1 s), →AWAY (5 s), recuperación (2 s), reinicio de contadores.": [
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784767300559
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784782802556
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784782940433
+      }
+    ],
+    "5. Crear `src/posture/calibration.ts`: `createCalibrationCollector(startTime)` que acumula 5 s, descarta confidence < 0.7, mediana, falla si < 15 frames. Test en `src/posture/__tests__/calibration.test.ts`.": [
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784767300717
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784782947618
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784783170522
+      }
+    ],
+    "6. Crear `src/posture/pipeline.ts`: `processLandmarks(landmarks, baseline, prevState, prevScore, now)` que orquesta métricas → scoring → stateMachine → PostureFrame. Test en `src/posture/__tests__/pipeline.test.ts`.": [
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784767300861
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784783174956
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784783293335
+      }
+    ],
+    "7. Crear `src/posture/postureSource.ts`: implementación de `PostureSource` que conecta con el pipeline de visión y gestiona calibración + emisión de PostureFrame.": [
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784767301038
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784783297188
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784783460181
+      }
+    ],
+    "8. Tests de integración contra los 4 fixtures verificando los criterios de aceptación (CA-1 a CA-4).": [
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784767301210
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784783464966
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784783586604
+      }
+    ],
+    "9. Verificar que todos los tests pasan y que el build compila sin errores.": [
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784767301363
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784783590518
+      },
+      {
+        "executionId": "0194cde8-7efe-4203-b1fb-d3e8d92eda3d",
+        "chatSessionId": "sess_c29512ab-e3b0-4509-a626-c123fdd836be",
+        "timestamp": 1784783666103
+      }
+    ]
+  }
+}
