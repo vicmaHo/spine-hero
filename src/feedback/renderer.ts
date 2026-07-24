@@ -30,6 +30,7 @@ export function createRenderer(opts: RendererOptions): {
 
   let sheet: HTMLImageElement | null = null;
   let rafId: number | null = null;
+  let stopped = false;
   let lastToggleTime = 0;
   let lastFrameTime = 0; // para calcular dt de partículas
   let currentFrameSlot = 0; // 0 o 1 dentro del par de frames del mood
@@ -103,8 +104,12 @@ export function createRenderer(opts: RendererOptions): {
    * Inicia el renderer: carga assets y arranca el bucle rAF.
    */
   function start(): void {
+    stopped = false;
     // Carga fuente y sprite sheet en paralelo, luego arranca el loop
     Promise.all([loadFont(), loadSpriteSheet()]).then(([, loadedSheet]) => {
+      // Si se detuvo mientras cargaban los assets (StrictMode / desmontaje
+      // rápido), no arranques el bucle: evita dos rAF dibujando a la vez.
+      if (stopped) return;
       sheet = loadedSheet;
       lastToggleTime = performance.now();
       rafId = requestAnimationFrame(loop);
@@ -115,6 +120,7 @@ export function createRenderer(opts: RendererOptions): {
    * Detiene el renderer cancelando el rAF pendiente.
    */
   function stop(): void {
+    stopped = true;
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
       rafId = null;

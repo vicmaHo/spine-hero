@@ -11,6 +11,11 @@ import { LM } from '../contracts/worker';
 
 let landmarker: PoseLandmarker | null = null;
 
+// Timestamp monotónico para MediaPipe (en ms desde carga, cabe en int32).
+// NO usar Date.now(): epoch ms desborda el int32 del binding WASM y se clampa
+// a 2147483647 en todos los frames, rompiendo la monotonía que MediaPipe exige.
+let lastVideoTs = 0;
+
 /** Índices que extraemos del resultado de MediaPipe (solo 5). */
 const USED_INDICES = [LM.NOSE, LM.LEFT_EAR, LM.RIGHT_EAR, LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER];
 
@@ -47,7 +52,12 @@ function handleFrame(bitmap: ImageBitmap, t: number): void {
 
   const t0 = performance.now();
   try {
-    const result = landmarker.detectForVideo(bitmap, t);
+    // Timestamp para MediaPipe: monotónico y acotado a int32 (ver lastVideoTs).
+    let videoTs = Math.round(performance.now());
+    if (videoTs <= lastVideoTs) videoTs = lastVideoTs + 1;
+    lastVideoTs = videoTs;
+
+    const result = landmarker.detectForVideo(bitmap, videoTs);
     const inferenceMs = performance.now() - t0;
 
     if (!result.landmarks || result.landmarks.length === 0) {
@@ -66,6 +76,12 @@ function handleFrame(bitmap: ImageBitmap, t: number): void {
     }));
 
     post({ type: 'LANDMARKS', t, landmarks: filtered, inferenceMs });
+  } catch (err: unknown) {
+    // Si detectForVideo lanza (p. ej. timestamp no monotónico o fallo de GPU),
+    // avisamos en vez de dejar que la excepción wedgee el pipeline (el main
+    // thread nunca resetearía `busy` y se cortarían todos los frames).
+    const detail = err instanceof Error ? err.message : String(err);
+    post({ type: 'ERROR', message: detail });
   } finally {
     bitmap.close();
   }

@@ -233,6 +233,7 @@ export class CameraSource {
 
     if (msg.type === 'ERROR') {
       this.busy = false;
+      if (import.meta.env.DEV) console.warn('[cam] worker ERROR:', msg.message);
     }
   }
 

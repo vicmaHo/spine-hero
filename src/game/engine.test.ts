@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   tick,
   XP_PER_REWARD,
-  XP_INTERVAL_S,
   HP_ENTER_BAD,
   FAINT_RECOVERY_S,
   FAINT_RECOVERY_HP,

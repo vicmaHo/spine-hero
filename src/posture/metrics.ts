@@ -32,9 +32,13 @@ export function computeRawMetrics(landmarks: Landmark[]): {
   const midShouldersY = (leftShoulder.y + rightShoulder.y) / 2;
 
   const neckRatio = (midShouldersY - midEarsY) / shoulderWidth;
+  // Inclinación de la línea de hombros respecto a la horizontal (0 = nivelados).
+  // Usamos |dx| para que no dependa de qué hombro cae a menor x en la imagen:
+  // con cámara real el hombro derecho está a menor x, y atan2(dy, dx<0) daría
+  // ≈π incluso con hombros nivelados, hundiendo el score. Con |dx|, nivelado ≈ 0.
   const tilt = Math.atan2(
     rightShoulder.y - leftShoulder.y,
-    rightShoulder.x - leftShoulder.x,
+    Math.abs(rightShoulder.x - leftShoulder.x),
   );
   const headTilt = (nose.y - midEarsY) / shoulderWidth;
 

@@ -43,7 +43,9 @@ export function createPostureSource(source: LandmarkSource): PostureSource {
     if (calibrating && calibrationCollector) {
       // Durante calibración: alimentar el collector
       const confidence =
-        landmarks.reduce((sum, lm) => sum + lm.visibility, 0) / landmarks.length;
+        landmarks.length > 0
+          ? landmarks.reduce((sum, lm) => sum + lm.visibility, 0) / landmarks.length
+          : 0;
       calibrationCollector.push(landmarks, confidence, t);
 
       // Emitir frame con status CALIBRATING para que la UI lo sepa

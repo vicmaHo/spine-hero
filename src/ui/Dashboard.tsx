@@ -33,6 +33,8 @@ export function Dashboard() {
   const stop = useAppStore((s) => s.stop);
   const calibrate = useAppStore((s) => s.calibrate);
   const setSource = useAppStore((s) => s.setSource);
+  const calibration = useAppStore((s) => s.calibration);
+  const calibrationError = useAppStore((s) => s.calibrationError);
 
   const [isCalibrating, setIsCalibrating] = useState(false);
 
@@ -95,6 +97,16 @@ export function Dashboard() {
           {isCalibrating && (
             <p className="text-xs text-blue-400 animate-pulse text-center">Calibración en progreso…</p>
           )}
+          {source === 'real' && isRunning && !calibration && !isCalibrating && (
+            <p className="text-xs text-amber-400 text-center">
+              Siéntate erguido y pulsa <strong>Calibrar</strong> (5 s) para empezar.
+            </p>
+          )}
+          {calibrationError && (
+            <p className="text-xs text-red-400 bg-red-900/30 rounded-lg px-3 py-1.5">
+              {calibrationError}
+            </p>
+          )}
 
           {/* Selector de fuente */}
           <div className="flex items-center gap-2 mt-auto">
@@ -107,7 +119,7 @@ export function Dashboard() {
               className="flex-1 bg-gray-800 text-white text-xs rounded-lg px-2 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed border border-gray-700"
             >
               <option value="mock">Mock (guion cíclico)</option>
-              <option value="real" disabled>Cámara (No disponible)</option>
+              <option value="real">Cámara (real)</option>
             </select>
           </div>
 

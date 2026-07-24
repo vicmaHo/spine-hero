@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import type { PostureFrame, CalibrationBaseline, PostureError } from '../contracts/posture';
+import type { Landmark } from '../contracts/worker';
 import type { GameState } from '../contracts/game';
 import { INITIAL_GAME_STATE } from '../contracts/game';
 import { createMockPostureSource } from '../contracts/mockSource';
-// TODO: integración M — reemplazar stub cuando el módulo esté listo
+import { CameraSource } from '../vision/cameraSource';
+import { createPostureSource, type LandmarkSource } from '../posture/postureSource';
 import { tick } from '../game/engine';
 import { loadProfile } from '../storage/profileStore';
 import { scheduleProfileSave, flushNow } from '../storage/profileDebounce';
@@ -32,6 +34,9 @@ interface AppState {
   lastError: PostureError | null;
   isAuthenticated: boolean;
   teamCode: string | null;
+  videoStream: MediaStream | null;      // stream de la cámara en modo real (para preview)
+  calibrationError: string | null;      // mensaje si la calibración falla
+  latestLandmarks: Landmark[];          // últimos landmarks (modo real) para el overlay
 
   // --- Acciones ---
   setSource: (type: SourceType) => void;
@@ -50,6 +55,7 @@ let _unsubscribe: (() => void) | null = null;
 let _minuteWriter: MinuteWriter | null = null;
 let _synchronizer: Synchronizer | null = null;
 let _sourceInstance: { start(): Promise<void>; stop(): void; calibrate(): Promise<CalibrationBaseline>; subscribe(fn: (f: PostureFrame) => void): () => void } | null = null;
+let _landmarksUnsub: (() => void) | null = null;
 
 // Tracking para cálculo de perf
 let _frameTimes: number[] = [];
@@ -85,6 +91,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   lastError: null,
   isAuthenticated: false,
   teamCode: null,
+  videoStream: null,
+  calibrationError: null,
+  latestLandmarks: [],
 
   // --- Acciones ---
 
@@ -109,12 +118,26 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (isRunning) return;
 
     // Instanciar la fuente según el tipo seleccionado
+    let camera: CameraSource | null = null;
     if (source === 'mock') {
       _sourceInstance = createMockPostureSource();
     } else {
-      // TODO: instanciar fuente real cuando esté disponible
-      // Por ahora fallback a mock
-      _sourceInstance = createMockPostureSource();
+      // Fuente real: cámara + worker de V (LandmarkSource) → pipeline de postura de V.
+      // El adaptador traduce el Result de CameraSource.start() a la interfaz
+      // LandmarkSource, que espera lanzar el PostureError si la cámara falla.
+      camera = new CameraSource();
+      const cam = camera;
+      const adapter: LandmarkSource = {
+        async start() {
+          const result = await cam.start();
+          if (!result.ok) throw result.error;
+        },
+        stop() { cam.stop(); },
+        subscribe(fn) {
+          return cam.subscribe((e) => fn({ t: e.t, landmarks: e.landmarks }));
+        },
+      };
+      _sourceInstance = createPostureSource(adapter);
     }
 
     try {
@@ -134,13 +157,28 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().pushFrame(frame);
     });
 
-    set({ isRunning: true, lastError: null });
+    // Suscripción extra solo para el overlay de landmarks (modo real).
+    if (camera) {
+      _landmarksUnsub = camera.subscribe((e) => {
+        useAppStore.setState({ latestLandmarks: e.landmarks });
+      });
+    }
+
+    set({
+      isRunning: true,
+      lastError: null,
+      videoStream: camera ? camera.getStream() : null,
+    });
   },
 
   stop: () => {
     if (_unsubscribe) {
       _unsubscribe();
       _unsubscribe = null;
+    }
+    if (_landmarksUnsub) {
+      _landmarksUnsub();
+      _landmarksUnsub = null;
     }
     if (_minuteWriter) {
       _minuteWriter.stop();
@@ -152,21 +190,36 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     flushNow();
     _frameTimes = [];
-    set({ isRunning: false, frame: null, perf: { p50: 0, p95: 0, fps: 0 } });
+    set({ isRunning: false, frame: null, perf: { p50: 0, p95: 0, fps: 0 }, videoStream: null, latestLandmarks: [] });
   },
 
   calibrate: async () => {
     if (!_sourceInstance) return;
-    const baseline = await _sourceInstance.calibrate();
-    await saveCalibration(baseline);
-    set({ calibration: baseline });
+    set({ calibrationError: null });
+    try {
+      // Red de seguridad: si la fuente nunca resuelve (p. ej. la cámara no
+      // entrega datos), no dejamos "Calibrando…" colgado para siempre.
+      const baseline = await Promise.race([
+        _sourceInstance.calibrate(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('TIMEOUT')), 8000),
+        ),
+      ]);
+      await saveCalibration(baseline);
+      set({ calibration: baseline });
+    } catch (err) {
+      const raw = (err as Error).message;
+      const msg = raw === 'TIMEOUT'
+        ? 'La calibración no recibió datos suficientes en 8 s. Comprueba que la cámara te detecta (deberías ver los puntos sobre el vídeo).'
+        : raw ?? 'Calibración fallida';
+      set({ calibrationError: msg });
+    }
   },
 
   pushFrame: (frame: PostureFrame) => {
     const { game } = get();
 
     // Motor de juego — el store solo orquesta, no contiene lógica
-    // TODO: integración M — tick(game, frame) es la API final
     const result = tick(game, frame, Date.now());
 
     // Persistencia: minute writer

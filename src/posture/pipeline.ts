@@ -16,9 +16,28 @@ export function processLandmarks(
   prevScore: number,
   now: number,
 ): { frame: PostureFrame; nextState: PostureState; smoothedScore: number } {
-  // 1. Confidence = media de visibility de los 5 landmarks
+  // 1. Confidence = media de visibility de los 5 landmarks (0 si no hay pose)
   const confidence =
-    landmarks.reduce((sum, lm) => sum + lm.visibility, 0) / landmarks.length;
+    landmarks.length > 0
+      ? landmarks.reduce((sum, lm) => sum + lm.visibility, 0) / landmarks.length
+      : 0;
+
+  // Sin los 5 landmarks no se pueden calcular métricas: computeRawMetrics leería
+  // undefined y lanzaría. La máquina de estados decide AWAY por landmarks.length.
+  if (landmarks.length < 5) {
+    const nextState = transition(prevState, prevScore, confidence, landmarks.length, now);
+    return {
+      frame: {
+        t: now,
+        status: nextState.status,
+        score: prevScore,
+        metrics: { neckRatio: 0, proximity: 0, tilt: 0, headTilt: 0 },
+        confidence,
+      },
+      nextState,
+      smoothedScore: prevScore,
+    };
+  }
 
   // 2. Métricas normalizadas contra baseline
   const metrics = computeMetrics(landmarks, baseline);
