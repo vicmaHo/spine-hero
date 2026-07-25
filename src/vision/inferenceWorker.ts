@@ -44,14 +44,13 @@ async function handleInit(wasmPath: string, modelPath: string): Promise<void> {
 }
 
 function handleFrame(bitmap: ImageBitmap, t: number): void {
-  if (!landmarker) {
-    post({ type: 'ERROR', message: 'Landmarker no inicializado' });
-    bitmap.close();
-    return;
-  }
-
   const t0 = performance.now();
   try {
+    if (!landmarker) {
+      post({ type: 'ERROR', message: 'Landmarker no inicializado' });
+      return;
+    }
+
     // Timestamp para MediaPipe: monotónico y acotado a int32 (ver lastVideoTs).
     let videoTs = Math.round(performance.now());
     if (videoTs <= lastVideoTs) videoTs = lastVideoTs + 1;
@@ -83,6 +82,9 @@ function handleFrame(bitmap: ImageBitmap, t: number): void {
     const detail = err instanceof Error ? err.message : String(err);
     post({ type: 'ERROR', message: detail });
   } finally {
+    // Único punto de cierre del bitmap: cubre todas las rutas (sin landmarker,
+    // sin persona, éxito y excepción). Sin esto la pestaña fuga memoria en
+    // minutos a 5 FPS.
     bitmap.close();
   }
 }
