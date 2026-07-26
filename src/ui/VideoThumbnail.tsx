@@ -81,7 +81,7 @@ export function VideoThumbnail() {
   }, [landmarks, videoStream]);
 
   return (
-    <div className="relative w-full aspect-[4/3] bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center">
+    <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden bg-[#1b1710]">
       <video
         ref={videoRef}
         muted
@@ -96,7 +96,7 @@ export function VideoThumbnail() {
       />
       {!videoStream && (
         <svg
-          className="w-12 h-12 text-gray-600"
+          className="h-12 w-12 text-[#5c4128]"
           fill="none"
           stroke="currentColor"
           strokeWidth={1.5}

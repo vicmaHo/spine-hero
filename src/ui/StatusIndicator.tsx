@@ -7,11 +7,11 @@ interface StatusIndicatorProps {
 }
 
 const STATUS_COLORS: Record<PostureStatus, string> = {
-  GOOD: 'bg-green-500',
-  BAD: 'bg-red-500',
-  AWAY: 'bg-gray-500',
-  CALIBRATING: 'bg-amber-500',
-  LOW_CONF: 'bg-purple-500',
+  GOOD: 'bg-[#6ea84a]',
+  BAD: 'bg-[#c4523c]',
+  AWAY: 'bg-[#8a7a63]',
+  CALIBRATING: 'bg-[#d9a938]',
+  LOW_CONF: 'bg-[#8b5cf6]',
 };
 
 const STATUS_LABELS: Record<PostureStatus, string> = {
@@ -28,12 +28,12 @@ export function StatusIndicator({ status }: StatusIndicatorProps) {
   const label = STATUS_LABELS[effective];
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5">
       <span
         data-testid="status-indicator"
-        className={`${color} w-4 h-4 rounded-full inline-block`}
+        className={`${color} inline-block h-3 w-3 rounded-full ring-2 ring-[rgba(36,26,16,0.5)]`}
       />
-      <span className="text-sm font-medium text-white">{label}</span>
+      <span className="text-[12px] font-semibold text-[#4a3721]">{label}</span>
     </div>
   );
 }
@@ -67,14 +67,14 @@ export function ScoreBar({ score }: ScoreBarProps) {
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
 
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-sm font-medium text-white w-8 text-right">
+    <div className="flex items-center gap-2.5">
+      <span className="font-pixel w-9 text-right text-[9px] text-[#4a3721]">
         {clamped}
       </span>
-      <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
+      <div className="rpg-bar-track h-3 flex-1">
         <div
           data-testid="score-bar-fill"
-          className="h-full rounded-full transition-all duration-300"
+          className="rpg-bar-fill"
           style={{ width: `${clamped}%`, backgroundColor: scoreBarColor(clamped) }}
         />
       </div>

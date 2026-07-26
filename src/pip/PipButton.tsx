@@ -74,12 +74,13 @@ export function PipButton() {
   }, [pipOpen]);
 
   return (
-    <button
-      onClick={handleOpen}
-      disabled={pipOpen}
-      className="w-full px-3 py-2 rounded-lg bg-purple-600 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-purple-500 transition-colors"
-    >
-      {pipOpen ? 'Ventana flotante activa' : 'Abrir ventana flotante'}
+    <button onClick={handleOpen} disabled={pipOpen} className="rpg-btn rpg-btn-purple w-full">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <rect x="12" y="12" width="7" height="6" rx="1" fill="currentColor" stroke="none" />
+        <path d="M3 8h18" />
+      </svg>
+      {pipOpen ? 'VENTANA FLOTANTE ACTIVA' : 'ABRIR VENTANA FLOTANTE'}
     </button>
   );
 }

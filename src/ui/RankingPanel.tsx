@@ -9,6 +9,19 @@ const client = generateClient<Schema>();
 /** Regex: 4-20 caracteres alfanuméricos (letras ASCII y dígitos) */
 const TEAM_CODE_REGEX = /^[A-Za-z0-9]{4,20}$/;
 
+/** Solo se muestra el podio. Nada de tablas enormes. */
+const PODIUM_SIZE = 3;
+
+/** Estilo de cada puesto del podio: medalla y color del estandarte. */
+const PODIUM_STYLES = [
+  { medal: '#f2cf6b', medalDark: '#9c7420', banner: '#5e8c42', bannerDark: '#2c4a1c' },
+  { medal: '#dfe4ea', medalDark: '#8d959e', banner: '#3d7ea6', bannerDark: '#1e455f' },
+  { medal: '#cf9058', medalDark: '#8a5424', banner: '#8b5cf6', bannerDark: '#3f2277' },
+] as const;
+
+/** Emblemas del estandarte por puesto. Decorativo. */
+const PODIUM_EMBLEMS = ['✦', '✧', '✩'] as const;
+
 /** Convierte segundos totales a formato HH:MM:SS */
 export function formatSeconds(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
@@ -44,6 +57,9 @@ export function RankingPanel() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [queryError, setQueryError] = useState('');
+
+  const podium = ranking.slice(0, PODIUM_SIZE);
+  const leaderSeconds = podium.length > 0 ? podium[0].goodPostureSeconds : 0;
 
   const handleInputChange = (value: string) => {
     setTeamCode(value);
@@ -88,11 +104,18 @@ export function RankingPanel() {
   };
 
   return (
-    <div className="bg-gray-900 rounded-xl p-4 flex flex-col gap-4">
-      <h2 className="text-lg font-bold text-white">Ranking de equipo</h2>
+    <section className="rpg-panel px-4 pb-4 pt-7">
+      <div className="absolute -top-3 left-3">
+        <span className="rpg-ribbon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M7 4h10v2h3v3a4 4 0 01-3.3 3.94A5 5 0 0113 16.9V19h3v2H8v-2h3v-2.1a5 5 0 01-3.7-3.96A4 4 0 014 9V6h3V4zm0 4H6v1a2 2 0 001 1.73V8zm10 0v2.73A2 2 0 0018 9V8h-1z" />
+          </svg>
+          RANKING DE EQUIPOS
+        </span>
+      </div>
 
-      {/* Campo de entrada para TeamCode */}
-      <div className="flex flex-col gap-1">
+      {/* Buscador de equipo */}
+      <div className="flex flex-col gap-1.5">
         <div className="flex gap-2">
           <input
             type="text"
@@ -101,7 +124,7 @@ export function RankingPanel() {
             onKeyDown={handleKeyDown}
             placeholder="Código de equipo"
             maxLength={20}
-            className="flex-1 bg-gray-800 text-white text-sm rounded-lg px-3 py-2 border border-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            className="rpg-field max-w-[240px] flex-1"
             aria-label="Código de equipo"
             aria-describedby={validationError ? 'team-code-error' : undefined}
             aria-invalid={validationError ? true : undefined}
@@ -109,65 +132,116 @@ export function RankingPanel() {
           <button
             onClick={handleSearch}
             disabled={!TEAM_CODE_REGEX.test(teamCode) || loading}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-sm font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-500 transition-colors"
+            className="rpg-btn rpg-btn-gold rpg-btn-sm"
           >
-            {loading ? 'Buscando…' : 'Buscar'}
+            {loading ? 'BUSCANDO…' : 'BUSCAR'}
           </button>
         </div>
         {validationError && (
-          <p id="team-code-error" className="text-xs text-red-400" role="alert">
+          <p id="team-code-error" className="text-[11px] font-medium text-[#8e2820]" role="alert">
             {validationError}
           </p>
         )}
       </div>
 
-      {/* Error de consulta */}
       {queryError && (
-        <p className="text-xs text-red-400 bg-red-900/30 rounded-lg px-3 py-2" role="alert">
+        <p
+          className="mt-3 rounded-md border-2 border-[#c4523c] bg-[rgba(196,82,60,0.18)] px-3 py-2 text-[11px] font-medium text-[#8e2820]"
+          role="alert"
+        >
           {queryError}
         </p>
       )}
 
-      {/* Estado de carga */}
       {loading && (
-        <p className="text-sm text-gray-400 animate-pulse text-center">Cargando ranking…</p>
+        <p className="mt-4 animate-pulse text-center text-[12px] font-semibold text-[#5c4128]">
+          Cargando ranking…
+        </p>
       )}
 
-      {/* Lista de resultados */}
-      {!loading && searched && ranking.length === 0 && !queryError && (
-        <p className="text-sm text-gray-400 text-center py-4">
+      {!loading && searched && podium.length === 0 && !queryError && (
+        <p className="mt-4 text-center text-[12px] font-medium text-[#5c4128]">
           No se encontraron resultados para este código
         </p>
       )}
 
-      {!loading && ranking.length > 0 && (
-        <div className="flex flex-col gap-1">
-          {/* Cabecera */}
-          <div className="grid grid-cols-12 gap-2 text-xs text-gray-500 px-2 py-1">
-            <span className="col-span-1">#</span>
-            <span className="col-span-4">Nombre</span>
-            <span className="col-span-3 text-right">Tiempo</span>
-            <span className="col-span-2 text-right">Nivel</span>
-            <span className="col-span-2 text-right">Racha</span>
-          </div>
+      {!loading && podium.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          {podium.map((entry, index) => {
+            const style = PODIUM_STYLES[index] ?? PODIUM_STYLES[PODIUM_STYLES.length - 1];
+            const ratio = leaderSeconds > 0 ? entry.goodPostureSeconds / leaderSeconds : 0;
+            const filled = Math.max(1, Math.round(ratio * 7));
 
-          {/* Filas */}
-          {ranking.map((entry, index) => (
-            <div
-              key={entry.displayName}
-              className="grid grid-cols-12 gap-2 text-sm text-white bg-gray-800 rounded-lg px-2 py-2 items-center"
-            >
-              <span className="col-span-1 text-gray-400 font-mono">{index + 1}</span>
-              <span className="col-span-4 truncate">{entry.displayName}</span>
-              <span className="col-span-3 text-right font-mono text-green-400">
-                {formatSeconds(entry.goodPostureSeconds)}
-              </span>
-              <span className="col-span-2 text-right">{entry.level}</span>
-              <span className="col-span-2 text-right">{entry.streakDays}d</span>
-            </div>
-          ))}
+            return (
+              <div
+                key={entry.displayName}
+                className="rpg-hover-lift flex items-center gap-3 rounded-lg border-2 border-[#c9ab74] bg-[rgba(255,255,255,0.36)] px-3 py-2.5"
+                style={{ boxShadow: 'inset 0 2px 0 1px rgba(255,255,255,0.5), 0 3px 0 0 rgba(92,65,40,0.22)' }}
+              >
+                {/* Medalla */}
+                <div
+                  className="font-pixel flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px]"
+                  style={{
+                    background: `linear-gradient(180deg, ${style.medal} 0%, ${style.medalDark} 100%)`,
+                    border: '2px solid #241a10',
+                    color: '#3b2a1c',
+                    boxShadow: 'inset 0 2px 0 1px rgba(255,255,255,0.55), 0 2px 0 0 rgba(20,14,8,0.45)',
+                  }}
+                >
+                  {index + 1}
+                </div>
+
+                {/* Estandarte */}
+                <div
+                  className="flex h-9 w-8 shrink-0 items-center justify-center text-[15px] text-white"
+                  style={{
+                    background: `linear-gradient(180deg, ${style.banner} 0%, ${style.bannerDark} 100%)`,
+                    border: '2px solid #241a10',
+                    clipPath: 'polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%)',
+                    textShadow: '0 1px 0 rgba(0,0,0,0.5)',
+                  }}
+                  aria-hidden="true"
+                >
+                  {PODIUM_EMBLEMS[index] ?? PODIUM_EMBLEMS[0]}
+                </div>
+
+                {/* Nombre + barra */}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-bold text-[#3b2a1c]">
+                    {entry.displayName}
+                  </p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="rpg-bar-track flex h-[9px] flex-1 gap-[2px] p-[2px]">
+                      {Array.from({ length: 7 }, (_, i) => (
+                        <span
+                          key={i}
+                          className="rpg-seg"
+                          style={{
+                            backgroundColor: i < filled ? style.banner : 'rgba(255,255,255,0.08)',
+                            boxShadow: i < filled ? 'inset 0 1px 0 0 rgba(255,255,255,0.4)' : 'none',
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <span className="font-pixel shrink-0 text-[8px] tabular-nums text-[#9c7420]">
+                      Lv.{entry.level}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Tiempo de buena postura */}
+                <span
+                  className="font-pixel shrink-0 text-[10px] tabular-nums"
+                  style={{ color: '#9c7420' }}
+                  title={`${entry.goodPostureSeconds} s de buena postura`}
+                >
+                  {formatSeconds(entry.goodPostureSeconds)}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
-    </div>
+    </section>
   );
 }

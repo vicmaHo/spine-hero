@@ -23,6 +23,8 @@ export function AvatarCanvas() {
       canvas,
       getState: () => useAppStore.getState().game,
       getLastFrame: () => useAppStore.getState().frame,
+      // El dashboard ya pinta corazones, nivel y EXP en HTML bajo el panel.
+      showHud: false,
     });
 
     const bridge = createFeedbackBridge({
@@ -62,14 +64,26 @@ export function AvatarCanvas() {
 
   return (
     <div
-      className="w-full h-full min-h-[256px] bg-gray-800 rounded-lg flex items-center justify-center p-4 bg-cover bg-center"
+      className="relative flex min-h-[340px] w-full flex-1 items-center justify-center bg-cover bg-center p-4"
       style={{ backgroundImage: `url(${backgroundHero})` }}
     >
-      {/* El renderer fija la resolución interna a 128×160; aquí se escala ×2 con pixelado */}
+      {/* Viñeta: oscurece los bordes para que el personaje destaque en el centro */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: 'radial-gradient(ellipse at center, transparent 42%, rgba(20,16,12,0.55) 100%)' }}
+        aria-hidden="true"
+      />
+      {/* Sombra de contacto bajo el personaje */}
+      <div
+        className="pointer-events-none absolute bottom-[16%] left-1/2 h-3 w-32 -translate-x-1/2 rounded-full"
+        style={{ background: 'radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 72%)' }}
+        aria-hidden="true"
+      />
+      {/* Sin HUD la resolución interna es 128×128; aquí se escala ×2 con pixelado */}
       <canvas
         ref={canvasRef}
-        className="[image-rendering:pixelated]"
-        style={{ width: 256, height: 320 }}
+        className="pixelated relative drop-shadow-[0_6px_14px_rgba(0,0,0,0.6)]"
+        style={{ width: 256, height: 256 }}
       />
     </div>
   );
