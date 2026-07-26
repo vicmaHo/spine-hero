@@ -128,6 +128,55 @@ describe('processLandmarks', () => {
     expect(frame.t).toBe(now);
   });
 
+  it('congela el score ante shoulderWidth degenerado y no produce NaN', () => {
+    // Ambos hombros en la misma x → shoulderWidth 0. Sin la guarda, la
+    // normalización daría Infinity/NaN y contaminaría el EMA.
+    const glitch: Landmark[] = [
+      { x: 0.5, y: 0.3, z: 0, visibility: 0.9 },
+      { x: 0.45, y: 0.25, z: 0, visibility: 0.9 },
+      { x: 0.55, y: 0.25, z: 0, visibility: 0.9 },
+      { x: 0.5, y: 0.5, z: 0, visibility: 0.9 },
+      { x: 0.5, y: 0.5, z: 0, visibility: 0.9 },
+    ];
+
+    const { frame, smoothedScore } = processLandmarks(
+      glitch,
+      baseline,
+      INITIAL_POSTURE_STATE,
+      90,
+      5000,
+    );
+
+    expect(Number.isFinite(frame.score)).toBe(true);
+    expect(frame.score).toBe(90);       // congelado al prevScore
+    expect(smoothedScore).toBe(90);
+    expect(frame.confidence).toBe(0);   // señal no fiable
+  });
+
+  it('un frame glitch no arrastra ni envenena el score de los frames buenos', () => {
+    let state = INITIAL_POSTURE_STATE;
+    let score = 100;
+
+    // Frame bueno
+    let r = processLandmarks(perfectLandmarks(), baseline, state, score, 200);
+    state = r.nextState;
+    score = r.smoothedScore;
+
+    // Frame glitch: hombros solapados (shoulderWidth 0)
+    const glitch = perfectLandmarks();
+    glitch[3] = { x: 0.5, y: 0.5, z: 0, visibility: 0.9 };
+    glitch[4] = { x: 0.5, y: 0.5, z: 0, visibility: 0.9 };
+    r = processLandmarks(glitch, baseline, state, score, 400);
+    state = r.nextState;
+    score = r.smoothedScore;
+    expect(Number.isFinite(score)).toBe(true);
+
+    // Frame bueno de nuevo: el score sigue alto (no quedó envenenado)
+    r = processLandmarks(perfectLandmarks(), baseline, state, score, 600);
+    expect(Number.isFinite(r.smoothedScore)).toBe(true);
+    expect(r.smoothedScore).toBeGreaterThan(80);
+  });
+
   it('sesión secuencial: transiciones respetan debounce', () => {
     const frameInterval = 200; // 5 FPS
     let state: PostureState = INITIAL_POSTURE_STATE;
