@@ -75,6 +75,14 @@ function IconTarget() {
   );
 }
 
+function IconBack() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" aria-hidden="true">
+      <path d="M14 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function IconGear() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
@@ -146,7 +154,12 @@ const SPARKS: Spark[] = [
   { left: '2%',  bottom: '64%', delay: '4.1s',  duration: '11s',   size: 2, color: '#ffb85c', drift: true },
 ];
 
-export function Dashboard() {
+interface DashboardProps {
+  /** Vuelve a la landing. */
+  onBackToLanding: () => void;
+}
+
+export function Dashboard({ onBackToLanding }: DashboardProps) {
   const frame = useAppStore((s) => s.frame);
   const isRunning = useAppStore((s) => s.isRunning);
   const source = useAppStore((s) => s.source);
@@ -218,14 +231,26 @@ export function Dashboard() {
 
       <div className="relative z-10 mx-auto max-w-[1400px]">
 
-        {/* Identidad visual: el mismo logo del arranque, en pequeño */}
-        <div className="mb-4 flex items-center">
+        {/* Cabecera: logo a la izquierda, salida a la landing a la derecha */}
+        <header className="mb-5 flex items-center justify-between gap-4">
           <img
             src={logo}
             alt="SPINE HERO"
-            className="pixelated h-8 w-auto drop-shadow-[0_3px_7px_rgba(0,0,0,0.7)]"
+            className="pixelated h-11 w-auto drop-shadow-[0_3px_7px_rgba(0,0,0,0.7)]"
           />
-        </div>
+          <button
+            onClick={onBackToLanding}
+            className="rpg-btn rpg-btn-sm shrink-0"
+            style={{
+              background: 'linear-gradient(180deg, #8a6239 0%, #5c4128 100%)',
+              boxShadow:
+                'inset 0 2px 0 2px rgba(255,220,170,0.22), inset 0 -2px 0 2px rgba(40,26,12,0.35), 0 4px 0 0 #3b2a1c, 0 8px 16px -5px rgba(0,0,0,0.6)',
+            }}
+          >
+            <IconBack />
+            VOLVER AL INICIO
+          </button>
+        </header>
 
         <div className="grid grid-cols-12 gap-5 lg:gap-6">
 

@@ -20,9 +20,37 @@ export const ACHIEVEMENTS = [
   { id: 'constante', label: 'Constante', streakDays: 3 },
 ] as const;
 
-/** Calcula el XP necesario para subir del nivel actual */
-function levelThreshold(level: number): number {
+/**
+ * XP acumulado total que hay que alcanzar para superar `level`.
+ * Los umbrales son ACUMULATIVOS: 100, 282, 519, 800… No es el coste del
+ * nivel, es la marca absoluta de XP. Quien pinte una barra de progreso debe
+ * restar el umbral del nivel anterior.
+ */
+export function levelThreshold(level: number): number {
   return Math.floor(LEVEL_BASE_XP * Math.pow(level, LEVEL_EXPONENT));
+}
+
+export interface XpProgress {
+  /** XP conseguido dentro del nivel actual. */
+  inLevel: number;
+  /** XP que exige el nivel actual de principio a fin. */
+  needed: number;
+  /** 0-1, listo para multiplicar por el ancho de una barra. */
+  ratio: number;
+}
+
+/**
+ * Progreso dentro del nivel actual, para pintar la barra de XP.
+ * Existe aquí y no en cada capa de dibujado porque el HUD del canvas y el
+ * dashboard tenían fórmulas distintas y mostraban cifras contradictorias.
+ */
+export function xpProgress(xp: number, level: number): XpProgress {
+  const prev = level > 1 ? levelThreshold(level - 1) : 0;
+  const next = levelThreshold(level);
+  // max(1) evita dividir por cero si alguien pasa un nivel degenerado.
+  const needed = Math.max(1, next - prev);
+  const inLevel = Math.max(0, Math.min(needed, xp - prev));
+  return { inLevel, needed, ratio: inLevel / needed };
 }
 
 export function tick(state: GameState, frame: PostureFrame, now: number): TickResult {

@@ -283,6 +283,13 @@ body {
   gap: 6px;
 }
 
+/* Botón grande (llamadas a la acción de la landing) */
+.rpg-btn-lg {
+  font-size: 13px;
+  padding: 19px 28px;
+  gap: 12px;
+}
+
 /* ═══════════════════════════════════════════════════
    Campos de formulario talladas en el panel
    ═══════════════════════════════════════════════════ */
@@ -432,6 +439,19 @@ body {
   animation: splash-in 900ms cubic-bezier(0.22, 1, 0.36, 1) 320ms both;
 }
 
+/* Aparición al entrar en el viewport (landing) */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 680ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 680ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-visible {
+  opacity: 1;
+  transform: none;
+}
+
 /* Hover elegante de tarjeta */
 .rpg-hover-lift {
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease;
@@ -454,6 +474,12 @@ body {
   }
   .rpg-hover-lift:hover {
     transform: none;
+  }
+  /* Sin animación de entrada: el contenido se muestra directamente */
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
 }
 

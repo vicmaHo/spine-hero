@@ -9,6 +9,8 @@ import {
   FLOW_MILESTONES_MIN,
   LEVEL_BASE_XP,
   ACHIEVEMENTS,
+  levelThreshold,
+  xpProgress,
 } from './engine';
 import { INITIAL_GAME_STATE } from '../contracts/game';
 import type { GameState } from '../contracts/game';
@@ -276,5 +278,42 @@ describe('tick', () => {
     const result = tick(state, makeFrame('GOOD', 11000), 11000);
 
     expect(result.state.hp).toBeCloseTo(55, 5);
+  });
+
+  it('la barra de XP arranca vacía justo al subir de nivel', () => {
+    // Umbrales acumulativos: nivel 2 empieza exactamente en el umbral del 1.
+    const justLeveled = levelThreshold(1);
+    const { inLevel, ratio } = xpProgress(justLeveled, 2);
+
+    expect(inLevel).toBe(0);
+    expect(ratio).toBe(0);
+  });
+
+  it('la barra de XP se llena justo antes de subir de nivel', () => {
+    const almostNext = levelThreshold(2) - levelThreshold(1);
+    const { ratio } = xpProgress(levelThreshold(2), 2);
+
+    expect(almostNext).toBeGreaterThan(0);
+    expect(ratio).toBe(1);
+  });
+
+  it('el progreso de XP es proporcional dentro del nivel', () => {
+    const prev = levelThreshold(2);
+    const needed = levelThreshold(3) - prev;
+    const { ratio } = xpProgress(prev + needed / 2, 3);
+
+    expect(ratio).toBeCloseTo(0.5, 5);
+  });
+
+  it('el nivel 1 mide el progreso desde cero', () => {
+    const { needed, inLevel } = xpProgress(40, 1);
+
+    expect(needed).toBe(levelThreshold(1));
+    expect(inLevel).toBe(40);
+  });
+
+  it('el progreso de XP nunca sale del rango 0-1', () => {
+    expect(xpProgress(-999, 3).ratio).toBe(0);
+    expect(xpProgress(999999, 3).ratio).toBe(1);
   });
 });
