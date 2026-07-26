@@ -30,9 +30,13 @@ export function checkAndNotifyFlowMilestone(
   if (Notification.permission !== 'granted') return false;
   if (flowSeconds < nextMilestoneSeconds - FLOW_NOTIFY_AHEAD) return false;
 
-  // Enviar notificación del sistema
+  // El texto se deriva de la constante para que no mienta si se ajusta
+  // la ventana de aviso (los umbrales de demo la bajan a 30 s).
+  const ahead = FLOW_NOTIFY_AHEAD;
+  const label = ahead >= 60 ? `${Math.round(ahead / 60)} min` : `${ahead} s`;
+
   new Notification('SpineHero — ¡Hito inminente!', {
-    body: '¡Faltan 2 minutos para tu próximo hito de Flow!',
+    body: `¡Faltan ${label} para tu próximo hito de Flow!`,
   });
 
   return true;

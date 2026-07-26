@@ -34,14 +34,23 @@ describe('synth', () => {
   });
 
   it('setMuted(true) pone gain a 0 cuando existe masterGain', async () => {
+    const { MASTER_VOLUME } = await import('./constants');
+
     // Simulamos un AudioContext mínimo para probar el gain
-    const gainValue = { value: 0.4 };
+    const gainValue = { value: MASTER_VOLUME };
     const mockGain = { gain: gainValue, connect: vi.fn() };
+    const mockFilter = {
+      type: '',
+      frequency: { value: 0 },
+      Q: { value: 0 },
+      connect: vi.fn(),
+    };
 
     class MockAudioContext {
       destination = {};
       currentTime = 0;
       createGain() { return mockGain; }
+      createBiquadFilter() { return mockFilter; }
     }
 
     const listeners: Record<string, Function> = {};
@@ -63,7 +72,7 @@ describe('synth', () => {
     expect(gainValue.value).toBe(0);
 
     setMuted(false);
-    expect(gainValue.value).toBe(0.4);
+    expect(gainValue.value).toBe(MASTER_VOLUME);
 
     vi.unstubAllGlobals();
   });

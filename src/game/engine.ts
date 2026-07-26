@@ -1,5 +1,5 @@
 // Motor de juego puro: XP, HP, Flow, logros
-import type { GameState, GameEvent, TickResult } from '../contracts/game';
+import type { GameState, GameEvent, TickResult, PetMood } from '../contracts/game';
 import type { PostureFrame } from '../contracts/posture';
 
 export const XP_PER_REWARD = 10;
@@ -7,6 +7,7 @@ export const XP_INTERVAL_S = 60;
 export const HP_ENTER_BAD = 5;
 export const HP_ONGOING_BAD_RATE = 1;       // HP perdido por cada 10s en BAD
 export const HP_ONGOING_BAD_INTERVAL_S = 10;
+export const HP_REGEN_PER_S = 0.5;          // HP recuperado por segundo en GOOD
 export const FAINT_RECOVERY_S = 300;        // 5 min en GOOD para recuperar
 export const FAINT_RECOVERY_HP = 20;
 export const FLOW_MILESTONES_MIN = [25, 50, 90];
@@ -37,6 +38,10 @@ export function tick(state: GameState, frame: PostureFrame, now: number): TickRe
 
   // Copia mutable del estado
   let { xp, level, hp, flowSeconds, goodSecondsToday, mood, achievements, streakDays } = state;
+
+  // Marca si el pet acaba de revivir en este tick: entonces el mood queda
+  // en 'idle' y no se recalcula, para que la recuperación sea visible.
+  let justRevived = false;
 
   if (frame.status === 'GOOD') {
     // Acumular flow y segundos buenos
@@ -70,25 +75,19 @@ export function tick(state: GameState, frame: PostureFrame, now: number): TickRe
       }
     }
 
+    // Regeneración de HP mientras la postura es buena. Sin esto el HP solo
+    // podía bajar y la mascota nunca volvía a recuperar corazones.
+    if (mood !== 'faint') {
+      hp += dt * HP_REGEN_PER_S;
+    }
+
     // Recuperación de faint
-    let justRevived = false;
     if (mood === 'faint' && flowSeconds >= FAINT_RECOVERY_S) {
       hp = FAINT_RECOVERY_HP;
       mood = 'idle';
       justRevived = true;
       events.push({ type: 'REVIVED' });
       events.push({ type: 'MOOD_CHANGED', mood: 'idle' });
-    }
-
-    // Cambio de mood (solo si no está en faint y no acaba de revivir)
-    if (mood !== 'faint' && !justRevived) {
-      const oldMood = mood;
-      if (hp > 60) mood = 'happy';
-      else if (hp > 30) mood = 'idle';
-      else mood = 'sad';
-      if (mood !== oldMood) {
-        events.push({ type: 'MOOD_CHANGED', mood });
-      }
     }
   }
 
@@ -107,26 +106,28 @@ export function tick(state: GameState, frame: PostureFrame, now: number): TickRe
       }
     }
 
-    // Cambio de mood en BAD (misma lógica)
-    if (mood !== 'faint') {
-      const oldMood = mood;
-      if (hp > 60) mood = 'happy';
-      else if (hp > 30) mood = 'idle';
-      else mood = 'sad';
-      if (mood !== oldMood) {
-        events.push({ type: 'MOOD_CHANGED', mood });
-      }
-    }
   }
 
   // Clamp de HP
   hp = Math.max(0, Math.min(100, hp));
 
-  // Comprobar faint
-  if (hp <= 0 && mood !== 'faint') {
-    mood = 'faint';
-    events.push({ type: 'FAINTED' });
-    events.push({ type: 'MOOD_CHANGED', mood: 'faint' });
+  // Mood: refleja la POSTURA ACTUAL, no solo el HP. Antes se calculaba solo
+  // con el HP, así que con mala postura y HP alto la mascota seguía contenta.
+  if (hp <= 0) {
+    if (mood !== 'faint') {
+      mood = 'faint';
+      events.push({ type: 'FAINTED' });
+      events.push({ type: 'MOOD_CHANGED', mood: 'faint' });
+    }
+  } else if (mood !== 'faint' && !justRevived) {
+    // El mood sigue la postura actual, no el HP: así el feedback es inmediato.
+    // El HP ya se comunica con los corazones del HUD.
+    const oldMood = mood;
+    const desired: PetMood = frame.status === 'BAD' ? 'sad' : 'happy';
+    mood = desired;
+    if (mood !== oldMood) {
+      events.push({ type: 'MOOD_CHANGED', mood });
+    }
   }
 
   // Logros (se comprueban al final, tanto en GOOD como BAD)

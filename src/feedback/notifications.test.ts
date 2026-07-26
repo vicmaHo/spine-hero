@@ -34,24 +34,32 @@ describe('requestNotificationPermission', () => {
 
 describe('checkAndNotifyFlowMilestone', () => {
   it('envía notificación cuando flowSeconds alcanza la ventana de aviso', () => {
-    // Hito en 300s (5 min), ventana = 300 - 120 = 180s
-    const sent = checkAndNotifyFlowMilestone(180, 300, false);
+    const milestone = 300;
+    const sent = checkAndNotifyFlowMilestone(
+      milestone - FLOW_NOTIFY_AHEAD_SECONDS,
+      milestone,
+      false,
+    );
     expect(sent).toBe(true);
     expect(mockNotificationConstructor).toHaveBeenCalledWith(
       'SpineHero — ¡Hito inminente!',
-      { body: '¡Faltan 2 minutos para tu próximo hito de Flow!' },
+      expect.objectContaining({ body: expect.stringContaining('hito de Flow') }),
     );
   });
 
   it('no envía si flowSeconds está por debajo de la ventana', () => {
-    // 179s < 300 - 120 = 180s
-    const sent = checkAndNotifyFlowMilestone(179, 300, false);
+    const milestone = 300;
+    const sent = checkAndNotifyFlowMilestone(
+      milestone - FLOW_NOTIFY_AHEAD_SECONDS - 1,
+      milestone,
+      false,
+    );
     expect(sent).toBe(false);
     expect(mockNotificationConstructor).not.toHaveBeenCalled();
   });
 
   it('no envía si alreadyNotified es true', () => {
-    const sent = checkAndNotifyFlowMilestone(200, 300, true);
+    const sent = checkAndNotifyFlowMilestone(300, 300, true);
     expect(sent).toBe(false);
     expect(mockNotificationConstructor).not.toHaveBeenCalled();
   });
@@ -59,7 +67,7 @@ describe('checkAndNotifyFlowMilestone', () => {
   it('no envía si el permiso no está concedido', () => {
     // Cambiar permiso a 'denied'
     Object.defineProperty(Notification, 'permission', { value: 'denied', writable: true });
-    const sent = checkAndNotifyFlowMilestone(200, 300, false);
+    const sent = checkAndNotifyFlowMilestone(300, 300, false);
     expect(sent).toBe(false);
     expect(mockNotificationConstructor).not.toHaveBeenCalled();
   });
