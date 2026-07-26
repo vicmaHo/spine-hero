@@ -62,4 +62,27 @@ describe('LandmarkRecorder', () => {
     expect(frames).toHaveLength(1);
     expect(frames[0].t).toBe(500);
   });
+
+  // --- Casos borde ---
+
+  it('preserva el orden de inserción', () => {
+    recorder.record(makeLandmarksMsg(300));
+    recorder.record(makeLandmarksMsg(100));
+    recorder.record(makeLandmarksMsg(200));
+    const ts = recorder.getFrames().map((f) => f.t);
+    expect(ts).toEqual([300, 100, 200]);
+  });
+
+  it('permite volver a grabar tras un clear', () => {
+    recorder.record(makeLandmarksMsg(1000));
+    recorder.clear();
+    recorder.record(makeLandmarksMsg(2000));
+    expect(recorder.length).toBe(1);
+    expect(recorder.getFrames()[0].t).toBe(2000);
+  });
+
+  it('exporta un array vacío cuando no hay frames', () => {
+    expect(recorder.export()).toBe('[]');
+    expect(JSON.parse(recorder.export())).toEqual([]);
+  });
 });

@@ -16,8 +16,8 @@ describe('scoring – constantes exportadas', () => {
     expect(sum).toBeCloseTo(1.0);
   });
 
-  it('EMA_ALPHA es 0.3', () => {
-    expect(EMA_ALPHA).toBe(0.3);
+  it('EMA_ALPHA es 0.4', () => {
+    expect(EMA_ALPHA).toBe(0.4);
   });
 });
 

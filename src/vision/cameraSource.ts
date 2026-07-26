@@ -106,6 +106,10 @@ export class CameraSource {
     // Esperar READY o ERROR del worker
     const initResult = await this.initWorker(worker);
     if (!initResult.ok) {
+      // Si el modelo no carga, el worker ya está creado: hay que terminarlo
+      // aquí o queda huérfano (cleanup() no toca el worker).
+      worker.terminate();
+      this.worker = null;
       this.cleanup();
       return initResult;
     }
@@ -127,6 +131,9 @@ export class CameraSource {
     this.running = false;
 
     if (this.worker) {
+      // Desenganchar el handler antes de terminar evita procesar cualquier
+      // mensaje en vuelo que llegue entre el STOP y el terminate.
+      this.worker.onmessage = null;
       this.worker.postMessage({ type: 'STOP' });
       this.worker.terminate();
       this.worker = null;
@@ -254,6 +261,11 @@ export class CameraSource {
       this.video.srcObject = null;
       this.video = null;
     }
+
+    // Reset del estado transitorio: la instancia queda inerte y un start()
+    // posterior no arrastra un `busy` colgado ni un throttle desfasado.
+    this.busy = false;
+    this.lastFrameTime = 0;
   }
 
   private mapCameraError(err: unknown): PostureError {

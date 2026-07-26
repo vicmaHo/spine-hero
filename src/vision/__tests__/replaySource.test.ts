@@ -130,4 +130,60 @@ describe('ReplaySource', () => {
     vi.advanceTimersByTime(1000);
     expect(received).toHaveLength(0);
   });
+
+  // --- Casos borde ---
+
+  it('entrega el mismo frame a múltiples suscriptores', async () => {
+    const source = new ReplaySource(makeFixtures());
+    const a: PostureFrame[] = [];
+    const b: PostureFrame[] = [];
+    source.subscribe((f) => a.push(f));
+    source.subscribe((f) => b.push(f));
+
+    await source.start();
+    vi.advanceTimersByTime(0);
+
+    expect(a).toHaveLength(1);
+    expect(b).toHaveLength(1);
+    expect(a[0].t).toBe(b[0].t);
+  });
+
+  it('cancelar un suscriptor no afecta a los demás', async () => {
+    const source = new ReplaySource(makeFixtures());
+    const a: PostureFrame[] = [];
+    const b: PostureFrame[] = [];
+    const unsubA = source.subscribe((f) => a.push(f));
+    source.subscribe((f) => b.push(f));
+
+    unsubA();
+    await source.start();
+    vi.advanceTimersByTime(0);
+
+    expect(a).toHaveLength(0);
+    expect(b).toHaveLength(1);
+  });
+
+  it('stop antes de start no lanza ni deja timers', () => {
+    const source = new ReplaySource(makeFixtures());
+    expect(() => source.stop()).not.toThrow();
+    // Sin timers pendientes tras un stop prematuro.
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('calibrate en replay devuelve una línea base neutra', async () => {
+    const source = new ReplaySource(makeFixtures());
+    const baseline = await source.calibrate();
+    expect(baseline.shoulderWidth).toBe(1);
+    expect(baseline.neckRatio).toBe(1);
+    expect(baseline.tilt).toBe(0);
+    expect(baseline.headTilt).toBe(0);
+  });
+
+  it('stop es idempotente: llamarlo dos veces no lanza', async () => {
+    const source = new ReplaySource(makeFixtures());
+    await source.start();
+    source.stop();
+    expect(() => source.stop()).not.toThrow();
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });
