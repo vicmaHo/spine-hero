@@ -177,6 +177,30 @@ describe('processLandmarks', () => {
     expect(r.smoothedScore).toBeGreaterThan(80);
   });
 
+  it('congela y baja la confianza si la cabeza está girada (guard de orientación)', () => {
+    // Nariz muy descentrada respecto a orejas juntas → noseOffset > umbral.
+    const turned: Landmark[] = [
+      { x: 0.62, y: 0.3, z: 0, visibility: 0.99 },  // NOSE descentrada
+      { x: 0.48, y: 0.25, z: 0, visibility: 0.99 },  // LEFT_EAR
+      { x: 0.52, y: 0.25, z: 0, visibility: 0.99 },  // RIGHT_EAR (orejas juntas)
+      { x: 0.35, y: 0.5, z: 0, visibility: 0.99 },   // LEFT_SHOULDER
+      { x: 0.65, y: 0.5, z: 0, visibility: 0.99 },   // RIGHT_SHOULDER
+    ];
+
+    const { frame, smoothedScore } = processLandmarks(
+      turned,
+      baseline,
+      INITIAL_POSTURE_STATE,
+      88,
+      5000,
+    );
+
+    // Score congelado (no se puntúa girado) y confianza forzada a 0 → LOW_CONF.
+    expect(frame.score).toBe(88);
+    expect(smoothedScore).toBe(88);
+    expect(frame.confidence).toBe(0);
+  });
+
   it('sesión secuencial: transiciones respetan debounce', () => {
     const frameInterval = 200; // 5 FPS
     let state: PostureState = INITIAL_POSTURE_STATE;

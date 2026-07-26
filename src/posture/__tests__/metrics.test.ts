@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeRawMetrics, computeMetrics } from '../metrics';
+import { computeRawMetrics, computeMetrics, computeNoseOffset } from '../metrics';
 import type { Landmark } from '../../contracts/worker';
 import type { CalibrationBaseline } from '../../contracts/posture';
 import sessionGood from '../../../fixtures/session-good.json';
@@ -79,6 +79,31 @@ describe('computeRawMetrics', () => {
     expect(rawA.neckRatio).toBe(rawB.neckRatio);
     expect(rawA.tilt).toBe(rawB.tilt);
     expect(rawA.headTilt).toBe(rawB.headTilt);
+  });
+});
+
+describe('computeNoseOffset', () => {
+  it('es ~0 de frente (nariz centrada entre las orejas)', () => {
+    // nose x=0.5, ears 0.45/0.55 → centrada
+    expect(computeNoseOffset(makeLandmarks())).toBeCloseTo(0, 5);
+  });
+
+  it('crece al girar la cabeza (nariz descentrada, orejas juntas)', () => {
+    const turned = makeLandmarks({
+      nose: { x: 0.55 },
+      leftEar: { x: 0.48 },
+      rightEar: { x: 0.52 },
+    });
+    // |0.55 - 0.50| / |0.52 - 0.48| = 0.05 / 0.04 = 1.25
+    expect(computeNoseOffset(turned)).toBeCloseTo(1.25, 5);
+  });
+
+  it('devuelve 1 si las orejas se alinean en x (perfil extremo)', () => {
+    const profile = makeLandmarks({
+      leftEar: { x: 0.5 },
+      rightEar: { x: 0.5 },
+    });
+    expect(computeNoseOffset(profile)).toBe(1);
   });
 });
 

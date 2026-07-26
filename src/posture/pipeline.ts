@@ -1,9 +1,9 @@
 import type { Landmark } from '../contracts/worker';
 import type { CalibrationBaseline, PostureFrame } from '../contracts/posture';
 import type { PostureState } from './stateMachine';
-import { computeMetrics, IDX_LEFT_SHOULDER, IDX_RIGHT_SHOULDER } from './metrics';
+import { computeMetrics, computeNoseOffset, IDX_LEFT_SHOULDER, IDX_RIGHT_SHOULDER } from './metrics';
 import { computeRawScore, applyEma } from './scoring';
-import { transition } from './stateMachine';
+import { transition, MIN_CONFIDENCE } from './stateMachine';
 
 /**
  * Ancho de hombros mínimo (en coords normalizadas 0-1) para considerar la
@@ -13,6 +13,15 @@ import { transition } from './stateMachine';
  * este umbral solo dispara ante geometría realmente degenerada.
  */
 export const MIN_SHOULDER_WIDTH = 0.02;
+
+/**
+ * Umbral de desplazamiento de la nariz por encima del cual consideramos que el
+ * usuario no está de frente (cabeza girada o cámara lateral). Empírico: en
+ * capturas reales daba ~0.15 de frente y ~0.70 de lado. Girado, las métricas 2D
+ * no son fiables, así que congelamos y dejamos que la máquina de estados vaya a
+ * LOW_CONF (su debounce de 1 s filtra vistazos momentáneos).
+ */
+export const ORIENTATION_MAX_NOSE_OFFSET = 0.4;
 
 /**
  * Frame "congelado": mantiene el score previo y deja que la máquina de estados
@@ -63,6 +72,13 @@ export function processLandmarks(
     return frozenFrame(prevState, prevScore, confidence, landmarks.length, now);
   }
 
+  // Frame poco fiable (baja visibilidad): no movemos el score con datos malos,
+  // que si no se desploma la barra mientras el usuario está fuera de cuadro. La
+  // máquina de estados decide LOW_CONF/AWAY con la confianza real.
+  if (confidence < MIN_CONFIDENCE) {
+    return frozenFrame(prevState, prevScore, confidence, landmarks.length, now);
+  }
+
   // Guarda de geometría degenerada: todo se normaliza por shoulderWidth, así que
   // un ancho ≈ 0 (glitch o usuario de perfil) daría métricas no finitas que
   // envenenarían el EMA de toda la sesión, o un 0 espurio que penalizaría sin
@@ -71,6 +87,13 @@ export function processLandmarks(
     landmarks[IDX_RIGHT_SHOULDER].x - landmarks[IDX_LEFT_SHOULDER].x,
   );
   if (shoulderWidth < MIN_SHOULDER_WIDTH) {
+    return frozenFrame(prevState, prevScore, 0, landmarks.length, now);
+  }
+
+  // Guarda de orientación: si la cabeza está girada / cámara lateral, las
+  // métricas 2D miden mal (MediaPipe alucina el lado ocluido y la visibility no
+  // baja). Congelamos con confidence 0 → LOW_CONF tras el debounce de 1 s.
+  if (computeNoseOffset(landmarks) > ORIENTATION_MAX_NOSE_OFFSET) {
     return frozenFrame(prevState, prevScore, 0, landmarks.length, now);
   }
 

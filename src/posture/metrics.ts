@@ -46,6 +46,23 @@ export function computeRawMetrics(landmarks: Landmark[]): {
 }
 
 /**
+ * Desplazamiento horizontal de la nariz respecto al punto medio de las orejas,
+ * normalizado por la distancia entre orejas. ~0 de frente; crece al girar la
+ * cabeza (de perfil las orejas se juntan en x y la nariz se descentra). Sirve
+ * como detector de orientación: girado, las métricas 2D no son fiables porque
+ * MediaPipe alucina de forma estable el lado ocluido (la visibility no lo delata).
+ */
+export function computeNoseOffset(landmarks: Landmark[]): number {
+  const nose = landmarks[IDX_NOSE];
+  const leftEar = landmarks[IDX_LEFT_EAR];
+  const rightEar = landmarks[IDX_RIGHT_EAR];
+  const earMidX = (leftEar.x + rightEar.x) / 2;
+  const earWidth = Math.abs(rightEar.x - leftEar.x);
+  if (earWidth < 1e-4) return 1; // orejas alineadas en x → claramente de perfil
+  return Math.abs(nose.x - earMidX) / earWidth;
+}
+
+/**
  * Calcula las métricas normalizadas contra la baseline de calibración.
  * neckRatio y headTilt se dividen por su valor de calibración (~1.0 = postura igual).
  * proximity se divide por shoulderWidth de calibración (>1 = más cerca).
