@@ -34,8 +34,8 @@ export function TeamCodeInput() {
   };
 
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor="my-team-code" className="text-xs text-gray-400">Mi código de equipo</label>
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor="my-team-code" className="rpg-label">MI CÓDIGO DE EQUIPO</label>
       <div className="flex gap-2">
         <input
           id="my-team-code"
@@ -45,22 +45,25 @@ export function TeamCodeInput() {
           onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
           placeholder="Ej. DEMO1"
           maxLength={20}
-          className="flex-1 bg-gray-800 text-white text-xs rounded-lg px-2 py-1.5 border border-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          className="rpg-field min-w-0 flex-1"
         />
         <button
           onClick={handleSave}
           disabled={!valid || value === teamCode}
-          className="px-3 py-1.5 rounded-lg bg-blue-600 text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-500 transition-colors"
+          className="rpg-btn rpg-btn-green rpg-btn-sm shrink-0"
         >
-          Guardar
+          GUARDAR
         </button>
       </div>
       {value.length > 0 && !valid && (
-        <p className="text-xs text-red-400">4-20 caracteres alfanuméricos</p>
+        <p className="text-[11px] font-medium text-[#8e2820]">4-20 caracteres alfanuméricos</p>
       )}
-      {msg && <p className="text-xs text-green-400">{msg}</p>}
+      {msg && <p className="text-[11px] font-bold text-[#4a7a30]">{msg}</p>}
       {teamCode && (
-        <button onClick={handleClear} className="text-xs text-gray-500 hover:text-gray-300 text-left">
+        <button
+          onClick={handleClear}
+          className="text-left text-[11px] font-medium text-[#8a6239] underline decoration-dotted transition-colors hover:text-[#5c4128]"
+        >
           Salir del equipo «{teamCode}»
         </button>
       )}

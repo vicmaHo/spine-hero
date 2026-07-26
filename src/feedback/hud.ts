@@ -1,8 +1,6 @@
 import type { GameState } from '../contracts/game';
+import { xpProgress } from '../game/engine';
 import { SPRITE_SIZE, HEARTS_COUNT, HP_PER_HEART, FLOW_MILESTONES } from './constants';
-
-// XP necesario para subir de nivel: level * 100
-const XP_PER_LEVEL = (level: number): number => level * 100;
 
 // Colores del HUD
 const COLOR_HEART_FULL = '#FF2222';
@@ -114,7 +112,8 @@ function drawFlowBar(
 }
 
 /**
- * Dibuja una barra fina de XP (2px de alto) mostrando progreso al siguiente nivel.
+ * Dibuja una barra fina de XP (2px de alto) con el progreso dentro del nivel.
+ * El cálculo lo hace el motor: aquí solo se pinta.
  */
 function drawXPBar(
   ctx: CanvasRenderingContext2D,
@@ -124,8 +123,7 @@ function drawXPBar(
   y: number,
   maxWidth: number,
 ): void {
-  const xpForLevel = XP_PER_LEVEL(level);
-  const progress = xpForLevel > 0 ? (xp % xpForLevel) / xpForLevel : 0;
+  const { ratio } = xpProgress(xp, level);
   const barWidth = Math.max(maxWidth, 40);
   const barHeight = 2;
 
@@ -135,5 +133,5 @@ function drawXPBar(
 
   // Progreso
   ctx.fillStyle = COLOR_XP_BAR;
-  ctx.fillRect(x, y, barWidth * progress, barHeight);
+  ctx.fillRect(x, y, barWidth * ratio, barHeight);
 }
