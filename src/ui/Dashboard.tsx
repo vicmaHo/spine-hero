@@ -7,6 +7,7 @@ import { BenchmarksPanel } from './BenchmarksPanel';
 import { SyncControl } from './SyncControl';
 import { TeamCodeInput } from './TeamCodeInput';
 import { RankingPanel } from './RankingPanel';
+import { PipButton } from '../pip/PipButton';
 import type { PostureError } from '../contracts/posture';
 
 const STATUS_BG: Record<string, string> = {
@@ -129,6 +130,9 @@ export function Dashboard() {
               Error: {ERROR_LABELS[lastError.kind]}
             </p>
           )}
+
+          {/* Ventana flotante */}
+          <PipButton />
 
           {/* Código de equipo + login opcional para sincronización */}
           <div className="border-t border-gray-800 pt-3 flex flex-col gap-3">

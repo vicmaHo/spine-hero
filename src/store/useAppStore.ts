@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { PostureFrame, CalibrationBaseline, PostureError } from '../contracts/posture';
 import type { Landmark } from '../contracts/worker';
-import type { GameState } from '../contracts/game';
+import type { GameState, GameEvent } from '../contracts/game';
 import { INITIAL_GAME_STATE } from '../contracts/game';
 import { createMockPostureSource } from '../contracts/mockSource';
 import { CameraSource } from '../vision/cameraSource';
@@ -28,6 +28,7 @@ interface AppState {
   source: SourceType;
   frame: PostureFrame | null;
   game: GameState;
+  lastEvents: GameEvent[];              // últimos eventos emitidos por tick()
   calibration: CalibrationBaseline | null;
   perf: PerfStats;
   isRunning: boolean;
@@ -85,6 +86,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   source: 'mock',
   frame: null,
   game: INITIAL_GAME_STATE,
+  lastEvents: [],
   calibration: null,
   perf: { p50: 0, p95: 0, fps: 0 },
   isRunning: false,
@@ -243,6 +245,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       frame,
       game: result.state,
+      lastEvents: result.events,
       perf: computePerf(),
     });
   },

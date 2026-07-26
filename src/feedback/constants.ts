@@ -19,14 +19,19 @@ export const HEARTS_COUNT = 5;
 export const HP_PER_HEART = 20;
 
 // Audio
-export const ADSR = { attack: 0.01, decay: 0.05, sustain: 0.3, release: 0.1 };
-export const MASTER_VOLUME = 0.4;
+// Attack algo más largo que un click seco para evitar el chasquido inicial.
+export const ADSR = { attack: 0.02, decay: 0.06, sustain: 0.35, release: 0.12 };
+export const MASTER_VOLUME = 0.28;
+// Filtro paso bajo: recorta los armónicos altos de la onda cuadrada, que son
+// los que hacen que suene estridente. Mantiene el carácter 8-bit.
+export const LOWPASS_HZ = 1200;
+export const LOWPASS_Q = 0.7;
 
 // Partículas
 export const PARTICLE_COUNT = 12;
 export const PARTICLE_LIFETIME = 1.0; // segundos
 export const PARTICLE_GRAVITY = 120;  // px/s²
 
-// Notificaciones
+// Notificaciones y barra de Flow del HUD
 export const FLOW_MILESTONES = [5 * 60, 15 * 60, 30 * 60, 60 * 60]; // en segundos
 export const FLOW_NOTIFY_AHEAD = 120; // segundos antes del hito

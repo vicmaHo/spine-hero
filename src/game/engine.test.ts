@@ -2,10 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   tick,
   XP_PER_REWARD,
+  XP_INTERVAL_S,
   HP_ENTER_BAD,
   FAINT_RECOVERY_S,
   FAINT_RECOVERY_HP,
   FLOW_MILESTONES_MIN,
+  LEVEL_BASE_XP,
+  ACHIEVEMENTS,
 } from './engine';
 import { INITIAL_GAME_STATE } from '../contracts/game';
 import type { GameState } from '../contracts/game';
@@ -22,9 +25,11 @@ function makeFrame(status: PostureStatus, t: number): PostureFrame {
 }
 
 describe('tick', () => {
-  it('60 s en GOOD otorga +10 XP', () => {
+  it('otorga XP al completar un intervalo de buena postura', () => {
     const state: GameState = { ...INITIAL_GAME_STATE, lastTickAt: 1000, goodSecondsToday: 0 };
-    const result = tick(state, makeFrame('GOOD', 61000), 61000);
+    // Un intervalo exacto en GOOD
+    const t = 1000 + XP_INTERVAL_S * 1000;
+    const result = tick(state, makeFrame('GOOD', t), t);
 
     expect(result.state.xp).toBe(XP_PER_REWARD);
     expect(result.events).toContainEqual({ type: 'XP_GAINED', amount: XP_PER_REWARD });
@@ -96,33 +101,36 @@ describe('tick', () => {
   });
 
   it('sube de nivel al acumular XP suficiente', () => {
-    // Nivel 1, threshold = floor(100 * 1^1.5) = 100
+    // Umbral del nivel 1 = floor(LEVEL_BASE_XP * 1^1.5) = LEVEL_BASE_XP
     const state: GameState = {
       ...INITIAL_GAME_STATE,
       level: 1,
-      xp: 90,
-      goodSecondsToday: 59,
+      xp: LEVEL_BASE_XP - XP_PER_REWARD,
+      goodSecondsToday: XP_INTERVAL_S - 1,
       lastTickAt: 1000,
     };
-    // dt = 1s → goodSecondsToday llega a 60 → +10 XP → total 100 → level up
+    // dt = 1s → cruza un intervalo → +XP_PER_REWARD → alcanza el umbral
     const result = tick(state, makeFrame('GOOD', 2000), 2000);
 
-    expect(result.state.xp).toBe(100);
+    expect(result.state.xp).toBe(LEVEL_BASE_XP);
     expect(result.state.level).toBe(2);
     expect(result.events).toContainEqual({ type: 'LEVEL_UP', level: 2 });
   });
 
-  it('hito de Flow a 25 min emite FLOW_MILESTONE', () => {
-    const justBelow = FLOW_MILESTONES_MIN[0] * 60 - 1; // 1499
+  it('emite FLOW_MILESTONE al cruzar el primer hito de Flow', () => {
+    const firstMilestone = FLOW_MILESTONES_MIN[0];
     const state: GameState = {
       ...INITIAL_GAME_STATE,
-      flowSeconds: justBelow,
+      flowSeconds: firstMilestone * 60 - 1,
       lastTickAt: 1000,
     };
-    // dt = 2s → flowSeconds = 1501 (> 1500)
+    // dt = 2s → cruza el hito
     const result = tick(state, makeFrame('GOOD', 3000), 3000);
 
-    expect(result.events).toContainEqual({ type: 'FLOW_MILESTONE', minutes: 25 });
+    expect(result.events).toContainEqual({
+      type: 'FLOW_MILESTONE',
+      minutes: firstMilestone,
+    });
   });
 
   it('HP a 0 cambia mood a faint y emite FAINTED', () => {
@@ -157,14 +165,18 @@ describe('tick', () => {
     expect(result.events).toContainEqual({ type: 'REVIVED' });
   });
 
-  it('logro Espalda de Acero a 25 min de Flow', () => {
-    const justBelow = 25 * 60 - 1;
+  it('concede Espalda de Acero al alcanzar su umbral de Flow', () => {
+    const achievement = ACHIEVEMENTS.find((a) => a.id === 'espalda_de_acero');
+    if (!achievement || !('flowMin' in achievement)) {
+      throw new Error('Logro espalda_de_acero no encontrado');
+    }
+
     const state: GameState = {
       ...INITIAL_GAME_STATE,
-      flowSeconds: justBelow,
+      flowSeconds: achievement.flowMin * 60 - 1,
       lastTickAt: 1000,
     };
-    // dt = 2s → flowSeconds cruza 25*60
+    // dt = 2s → cruza el umbral del logro
     const result = tick(state, makeFrame('GOOD', 3000), 3000);
 
     expect(result.events).toContainEqual({
@@ -226,17 +238,43 @@ describe('tick', () => {
     expect(result.events).toContainEqual({ type: 'MOOD_CHANGED', mood: 'happy' });
   });
 
-  it('mood cambia a sad cuando HP <= 30', () => {
+  it('se pone contenta en cuanto la postura es buena, aunque el HP esté bajo', () => {
     const state: GameState = {
       ...INITIAL_GAME_STATE,
       hp: 25,
-      mood: 'idle',
+      mood: 'sad',
       lastTickAt: 1000,
     };
-    // dt corto, no hay cambio de HP significativo
-    const result = tick(state, makeFrame('GOOD', 1100), 1100);
+    const result = tick(state, makeFrame('GOOD', 1200), 1200);
+
+    expect(result.state.mood).toBe('happy');
+    expect(result.events).toContainEqual({ type: 'MOOD_CHANGED', mood: 'happy' });
+  });
+
+  it('se pone triste en el primer frame de mala postura', () => {
+    const state: GameState = {
+      ...INITIAL_GAME_STATE,
+      hp: 100,
+      mood: 'happy',
+      flowSeconds: 50,
+      lastTickAt: 1000,
+    };
+    const result = tick(state, makeFrame('BAD', 1200), 1200);
 
     expect(result.state.mood).toBe('sad');
     expect(result.events).toContainEqual({ type: 'MOOD_CHANGED', mood: 'sad' });
+  });
+
+  it('recupera HP mientras la postura es buena', () => {
+    const state: GameState = {
+      ...INITIAL_GAME_STATE,
+      hp: 50,
+      mood: 'happy',
+      lastTickAt: 1000,
+    };
+    // dt = 10 s → +5 HP con HP_REGEN_PER_S = 0.5
+    const result = tick(state, makeFrame('GOOD', 11000), 11000);
+
+    expect(result.state.hp).toBeCloseTo(55, 5);
   });
 });
