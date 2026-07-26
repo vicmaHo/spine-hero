@@ -103,13 +103,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setTeamCode: (code: string | null) => {
-    set({ teamCode: code });
+    // Normalizado a mayúsculas: la partition key del ranking es case-sensitive,
+    // así lo guardado y lo consultado coinciden siempre.
+    const normalized = code === null ? null : code.trim().toUpperCase();
+    set({ teamCode: normalized });
     // Persistir de inmediato en el perfil: sobrevive a recargas y el
     // synchronizer lo lee de IndexedDB para escribirlo en cada DailyRecord.
     void saveProfile({
       gameState: get().game,
       calibration: get().calibration,
-      teamCode: code ?? undefined,
+      teamCode: normalized ?? undefined,
     });
   },
 

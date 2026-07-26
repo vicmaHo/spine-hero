@@ -3,6 +3,8 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import type { TeamEntry } from '../contracts/sync';
 import { useAppStore } from '../store/useAppStore';
+// Helper compartido con el synchronizer: ambos deben usar la MISMA definición de día.
+import { todayLocalDate } from '../storage/dateKey';
 
 const client = generateClient<Schema>();
 
@@ -19,12 +21,12 @@ export function formatSeconds(totalSeconds: number): string {
 
 /** Ordena registros por goodPostureSeconds en orden descendente y mapea a TeamEntry[] */
 export function buildRanking(
-  records: { owner: string | null; goodPostureSeconds: number; level?: number | null }[]
+  records: { owner: string | null; displayName?: string | null; goodPostureSeconds: number; level?: number | null }[]
 ): TeamEntry[] {
   return [...records]
     .sort((a, b) => b.goodPostureSeconds - a.goodPostureSeconds)
     .map((record) => ({
-      displayName: record.owner ?? 'Anónimo',
+      displayName: record.displayName ?? record.owner ?? 'Anónimo',
       goodPostureSeconds: record.goodPostureSeconds,
       level: record.level ?? 1,
       streakDays: 0,
@@ -55,7 +57,9 @@ export function RankingPanel() {
   };
 
   const handleSearch = async () => {
-    if (!TEAM_CODE_REGEX.test(teamCode)) {
+    // La partition key del índice es case-sensitive: normalizamos igual que el store.
+    const normalized = teamCode.trim().toUpperCase();
+    if (!TEAM_CODE_REGEX.test(normalized)) {
       setValidationError('El código debe tener entre 4 y 20 caracteres alfanuméricos');
       return;
     }
@@ -65,9 +69,9 @@ export function RankingPanel() {
     setSearched(true);
 
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayLocalDate();
       const { data } = await client.models.DailyRecord.listByTeamAndDate({
-        teamCode,
+        teamCode: normalized,
         date: { eq: today },
       });
 
@@ -154,7 +158,7 @@ export function RankingPanel() {
           {/* Filas */}
           {ranking.map((entry, index) => (
             <div
-              key={entry.displayName}
+              key={`${entry.displayName}-${index}`}
               className="grid grid-cols-12 gap-2 text-sm text-white bg-gray-800 rounded-lg px-2 py-2 items-center"
             >
               <span className="col-span-1 text-gray-400 font-mono">{index + 1}</span>

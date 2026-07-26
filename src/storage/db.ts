@@ -16,6 +16,16 @@ export interface ProfileRecord {
   teamCode?: string;       // código de sala para el ranking; opcional
 }
 
+/**
+ * Mapea una fecha al id del DailyRecord ya creado en la nube para ese día.
+ * Permite hacer upsert (update en vez de create) y no duplicar filas por día.
+ * Es metadato de sincronización local: nunca sale del navegador.
+ */
+export interface SyncRecord {
+  date: string;            // YYYY-MM-DD (keyPath)
+  recordId: string;        // id del DailyRecord en AppSync/DynamoDB
+}
+
 export interface SpineHeroDB extends DBSchema {
   minutes: {
     key: [string, number]; // [date YYYY-MM-DD, minuteOfDay 0-1439]
@@ -25,16 +35,27 @@ export interface SpineHeroDB extends DBSchema {
     key: string; // 'current'
     value: ProfileRecord;
   };
+  sync: {
+    key: string;           // date YYYY-MM-DD
+    value: SyncRecord;
+  };
 }
 
 const DB_NAME = 'spinehero';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export function openSpineHeroDB(): Promise<IDBPDatabase<SpineHeroDB>> {
   return openDB<SpineHeroDB>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      db.createObjectStore('minutes', { keyPath: ['date', 'minute'] });
-      db.createObjectStore('profile');
+    upgrade(db, oldVersion) {
+      // v1: stores originales. No recrear si el usuario ya los tiene.
+      if (oldVersion < 1) {
+        db.createObjectStore('minutes', { keyPath: ['date', 'minute'] });
+        db.createObjectStore('profile');
+      }
+      // v2: store de metadatos de sincronización (id del DailyRecord por día).
+      if (oldVersion < 2) {
+        db.createObjectStore('sync', { keyPath: 'date' });
+      }
     },
   });
 }
@@ -73,4 +94,20 @@ export async function getProfile(): Promise<ProfileRecord | null> {
 export async function saveProfile(profile: ProfileRecord): Promise<void> {
   const db = await getDB();
   await db.put('profile', profile, 'current');
+}
+
+/**
+ * Devuelve el id del DailyRecord ya sincronizado para `date`, o null si aún
+ * no se ha creado ninguno ese día (primer sync → toca create).
+ */
+export async function getSyncedRecordId(date: string): Promise<string | null> {
+  const db = await getDB();
+  const rec = await db.get('sync', date);
+  return rec?.recordId ?? null;
+}
+
+/** Registra el id del DailyRecord creado para `date` (para futuros updates). */
+export async function setSyncedRecordId(date: string, recordId: string): Promise<void> {
+  const db = await getDB();
+  await db.put('sync', { date, recordId });
 }
