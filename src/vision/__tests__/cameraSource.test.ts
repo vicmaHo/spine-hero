@@ -26,10 +26,12 @@ class FakeWorker {
   transfers: unknown[][] = [];
   terminated = false;
 
-  constructor(
-    public url: unknown,
-    public opts: unknown,
-  ) {
+  url: unknown;
+  opts: unknown;
+
+  constructor(url: unknown, opts: unknown) {
+    this.url = url;
+    this.opts = opts;
     workers.push(this);
   }
 
@@ -110,7 +112,7 @@ beforeEach(() => {
   };
   (HTMLVideoElement.prototype as unknown as {
     cancelVideoFrameCallback: (id: number) => void;
-  }).cancelVideoFrameCallback = cancelVideoFrameCallback;
+  }).cancelVideoFrameCallback = cancelVideoFrameCallback as unknown as (id: number) => void;
 
   vi.stubGlobal('Worker', FakeWorker);
   vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ close: vi.fn() }));

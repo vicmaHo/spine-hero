@@ -40,6 +40,24 @@ export function StatusIndicator({ status }: StatusIndicatorProps) {
 
 // --- ScoreBar ---
 
+/**
+ * Umbral de score por debajo del cual la barra deja de ser verde y transiciona
+ * hacia rojo. Por encima: verde pleno. Por debajo: gradiente verde→amarillo→rojo,
+ * más rojo cuanto peor la postura.
+ */
+export const SCORE_TRANSITION_START = 30;
+
+/**
+ * Color de la barra de score en función de la postura.
+ * Interpola el tono HSL de 120 (verde) en el umbral a 0 (rojo) en score 0.
+ */
+export function scoreBarColor(score: number): string {
+  const clamped = Math.max(0, Math.min(100, score));
+  const ratio = clamped >= SCORE_TRANSITION_START ? 1 : clamped / SCORE_TRANSITION_START;
+  const hue = Math.round(120 * ratio);
+  return `hsl(${hue}, 70%, 45%)`;
+}
+
 interface ScoreBarProps {
   score: number | null;
 }
@@ -56,8 +74,8 @@ export function ScoreBar({ score }: ScoreBarProps) {
       <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
         <div
           data-testid="score-bar-fill"
-          className="h-full bg-green-400 rounded-full transition-all duration-300"
-          style={{ width: `${clamped}%` }}
+          className="h-full rounded-full transition-all duration-300"
+          style={{ width: `${clamped}%`, backgroundColor: scoreBarColor(clamped) }}
         />
       </div>
     </div>

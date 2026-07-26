@@ -1,102 +1,127 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PerfStats } from './perfStats';
-
-/** Intervalo de refresco del panel (ms). */
-const REFRESH_INTERVAL_MS = 500;
-
-interface PerfSnapshot {
-  p50: number;
-  p95: number;
-  fps: number;
-  dropped: number;
-  heapMB: number | null;
-}
+import { usePerfStats } from './usePerfStats';
+import { computeHealth, formatBenchmarkMarkdown, type HealthLevel } from './perfSnapshot';
 
 interface PerfPanelProps {
   stats: PerfStats;
 }
 
-/** Devuelve el heap usado en MB si la API existe, o null. */
-function readHeapMB(): number | null {
-  // performance.memory es una extensión no estándar de Chrome/Edge
-  const mem = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
-  if (!mem) return null;
-  return Math.round((mem.usedJSHeapSize / 1024 / 1024) * 10) / 10;
-}
+type CopyState = 'idle' | 'ok' | 'error';
+
+/** Milisegundos que dura la confirmación visual de copiado. */
+const COPY_FEEDBACK_MS = 2000;
+
+/** Estilo del badge de salud por nivel. */
+const HEALTH_UI: Record<HealthLevel, { label: string; dot: string; pulse: boolean }> = {
+  IDLE: { label: '—', dot: 'bg-gray-500', pulse: false },
+  HEALTHY: { label: 'HEALTHY', dot: 'bg-green-400', pulse: false },
+  WARNING: { label: 'WARNING', dot: 'bg-yellow-400', pulse: true },
+  CRITICAL: { label: 'CRITICAL', dot: 'bg-red-500', pulse: true },
+};
 
 function formatLine(label: string, value: string): string {
   return `${label.padEnd(10)} ${value}`;
 }
 
 /**
+ * Copia texto al portapapeles con fallback a execCommand si la Clipboard API
+ * no está disponible o falla (p. ej. contexto no seguro o sin permiso).
+ * Devuelve true si se copió por alguna vía.
+ */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Cae al fallback de textarea + execCommand.
+  }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Panel de rendimiento estilo terminal.
- * Muestra p50, p95, FPS reales de inferencia, frames descartados y heap.
+ * Muestra badge de salud, p50, p95, FPS reales, frames descartados y heap.
  */
 export function PerfPanel({ stats }: PerfPanelProps) {
-  const [snap, setSnap] = useState<PerfSnapshot>({
-    p50: 0,
-    p95: 0,
-    fps: 0,
-    dropped: 0,
-    heapMB: null,
-  });
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const snap = usePerfStats(stats);
+  const health = computeHealth(snap);
+  const [copyState, setCopyState] = useState<CopyState>('idle');
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    const tick = () => {
-      setSnap({
-        p50: stats.getP50(),
-        p95: stats.getP95(),
-        fps: Math.round(stats.getFps() * 10) / 10,
-        dropped: stats.getDropped(),
-        heapMB: readHeapMB(),
-      });
-    };
-
-    tick(); // lectura inicial
-    intervalRef.current = setInterval(tick, REFRESH_INTERVAL_MS);
-
-    return () => {
-      if (intervalRef.current !== null) clearInterval(intervalRef.current);
-    };
-  }, [stats]);
-
-  const copyToClipboard = useCallback(() => {
-    const lines = [
-      '## Benchmark',
-      '',
-      '| Métrica | Valor |',
-      '|---------|-------|',
-      `| p50 | ${snap.p50.toFixed(1)} ms |`,
-      `| p95 | ${snap.p95.toFixed(1)} ms |`,
-      `| FPS inferencia | ${snap.fps} |`,
-      `| Frames descartados | ${snap.dropped} |`,
-      ...(snap.heapMB !== null ? [`| Heap usado | ${snap.heapMB} MB |`] : []),
-      '',
-      `_Capturado: ${new Date().toISOString()}_`,
-    ];
-    void navigator.clipboard.writeText(lines.join('\n'));
+  const handleCopy = useCallback(async () => {
+    const markdown = formatBenchmarkMarkdown(snap, new Date().toISOString());
+    const ok = await copyText(markdown);
+    setCopyState(ok ? 'ok' : 'error');
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopyState('idle'), COPY_FEEDBACK_MS);
   }, [snap]);
+
+  // Limpieza del timer de confirmación al desmontar.
+  useEffect(() => {
+    return () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    };
+  }, []);
+
+  const ui = HEALTH_UI[health];
+  const copyLabel =
+    copyState === 'ok' ? '✓ ¡Copiado!' : copyState === 'error' ? '✗ Error' : 'Copiar';
 
   return (
     <div
       className="rounded-md border border-green-800 bg-gray-950 p-3 font-mono text-[11px] leading-relaxed text-green-400 select-none"
       aria-label="Panel de rendimiento"
     >
+      <div className="mb-2 flex items-center gap-2">
+        <span
+          className={`inline-block h-2 w-2 rounded-full ${ui.dot} ${ui.pulse ? 'animate-pulse' : ''}`}
+          aria-hidden="true"
+        />
+        <span className="text-green-300" role="status" aria-label={`Salud: ${ui.label}`}>
+          {ui.label}
+        </span>
+      </div>
+
       <pre className="m-0 whitespace-pre">
         {formatLine('p50', `${snap.p50.toFixed(1)} ms`)}{'\n'}
         {formatLine('p95', `${snap.p95.toFixed(1)} ms`)}{'\n'}
-        {formatLine('FPS', `${snap.fps}`)}{'\n'}
+        {formatLine('FPS', `${snap.fps.toFixed(1)}`)}{'\n'}
         {formatLine('Dropped', `${snap.dropped}`)}{'\n'}
-        {snap.heapMB !== null && formatLine('Heap', `${snap.heapMB} MB`)}
+        {snap.heapMB !== null && formatLine('Heap', `${snap.heapMB.toFixed(1)} MB`)}
       </pre>
+
       <button
         type="button"
-        onClick={copyToClipboard}
+        onClick={handleCopy}
         className="mt-2 cursor-pointer rounded border border-green-700 bg-green-950 px-2 py-0.5 text-[10px] text-green-300 hover:bg-green-900 active:bg-green-800"
       >
-        Copiar
+        {copyLabel}
       </button>
+
+      {/* Región de estado para lectores de pantalla: anuncia el resultado del
+          copiado sin reanunciar el botón entero. */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {copyState === 'ok'
+          ? 'Cifras copiadas al portapapeles'
+          : copyState === 'error'
+            ? 'No se pudo copiar'
+            : ''}
+      </span>
     </div>
   );
 }

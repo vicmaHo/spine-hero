@@ -6,8 +6,10 @@ export const WEIGHT_TILT = 0.20;
 export const WEIGHT_HEAD_TILT = 0.20;
 export const WEIGHT_PROXIMITY = 0.20;
 
-// Factor de suavizado EMA
-export const EMA_ALPHA = 0.3;
+// Factor de suavizado EMA. Más alto = el score (y el color de la barra) reacciona
+// más rápido a los cambios de postura, a costa de algo más de nerviosismo.
+// A 5 FPS: 0.3 tardaba ~2 s en virar; 0.4 lo baja a ~1.3 s.
+export const EMA_ALPHA = 0.4;
 
 // Factores de escala para convertir desviación en penalización (0-100 por métrica).
 // Elegidos empíricamente para que:
