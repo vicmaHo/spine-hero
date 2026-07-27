@@ -7,6 +7,8 @@ import { BenchmarksPanel } from './BenchmarksPanel';
 import { SyncControl } from './SyncControl';
 import { TeamCodeInput } from './TeamCodeInput';
 import { RankingPanel } from './RankingPanel';
+import { GuestNotice } from './GuestNotice';
+import { NickSettings } from './NickSettings';
 import { PipButton } from '../pip/PipButton';
 import { PetNameRibbon } from './PetNameRibbon';
 import backgroundDashboard from '../assets/background-dashboard.png';
@@ -254,6 +256,10 @@ export function Dashboard({ onBackToLanding }: DashboardProps) {
 
         <div className="grid grid-cols-12 gap-5 lg:gap-6">
 
+          {/* Aviso de sesión sin nick. Se pinta él mismo a col-span-12 y solo
+              existe en la fase 'guest'; en el resto no ocupa nada. */}
+          <GuestNotice />
+
           {/* ═══════════ Columna izquierda: cámara + puntaje ═══════════ */}
           <div className="col-span-12 flex flex-col gap-5 lg:col-span-3 lg:gap-6">
 
@@ -462,8 +468,9 @@ export function Dashboard({ onBackToLanding }: DashboardProps) {
                 </select>
               </div>
 
-              {/* Código de equipo + login opcional */}
+              {/* Identidad, código de equipo y sincronización */}
               <div className="mt-auto flex flex-col gap-3 pt-1">
+                <NickSettings />
                 <TeamCodeInput />
                 <SyncControl />
               </div>

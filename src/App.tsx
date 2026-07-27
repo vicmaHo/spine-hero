@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Dashboard } from './ui/Dashboard';
 import { LandingPage } from './ui/LandingPage';
+import { NickGate } from './ui/NickGate';
 import { SplashScreen } from './ui/SplashScreen';
 
 /**
  * landing → el usuario está leyendo la presentación.
- * loading → pulsó Empezar ahora: el dashboard se monta detrás de la splash.
- * app     → la aplicación ya está a la vista.
+ * loading → pulsó Empezar ahora: el acceso se monta detrás de la splash.
+ * app     → la aplicación ya está a la vista (Formulario_Acceso o dashboard).
  */
 type View = 'landing' | 'loading' | 'app';
 
@@ -27,12 +28,18 @@ function App() {
 
   return (
     <>
-      {/* Durante 'loading' el Dashboard ya está montado detrás de la splash:
-          así el renderer del compañero y el audio arrancan mientras la
-          pantalla de carga está visible, y al retirarse todo está caliente. */}
-      {view === 'landing'
-        ? <LandingPage onStart={handleStart} />
-        : <Dashboard onBackToLanding={handleBackToLanding} />}
+      {/* Durante 'loading' el NickGate ya está montado detrás de la splash: su
+          `bootstrapIdentity()` lee IndexedDB mientras la pantalla de carga está
+          visible, y si había un Nick guardado el Dashboard arranca ahí detrás
+          con el renderer y el audio ya calientes. Al retirarse la splash, lo
+          que aparece es el dashboard o el acceso, sin parpadeos intermedios. */}
+      {view === 'landing' ? (
+        <LandingPage onStart={handleStart} />
+      ) : (
+        <NickGate onBack={handleBackToLanding}>
+          <Dashboard onBackToLanding={handleBackToLanding} />
+        </NickGate>
+      )}
       {view === 'loading' && <SplashScreen onFinish={handleReady} />}
     </>
   );
