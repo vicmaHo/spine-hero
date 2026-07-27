@@ -40,17 +40,22 @@ también el `displayName` que aparece en el `DailyRecord` y en el
 
 ### El Correo_Vinculado
 
-El correo electrónico que se pide únicamente en el alta («Crear nick») es el
-único dato personal de contacto o de identificación directa de todo el
-producto. Sus cinco características:
+El correo electrónico que se pide en los dos modos del formulario de acceso
+(«Crear nick» y «Ya tengo nick») es el único dato personal de contacto o de
+identificación directa de todo el producto. Sus cinco características:
 
-1. **Sale del navegador**: se transmite al backend en exactamente dos
-   operaciones del alta, la consulta de existencia de correo y la creación del
-   registro `UserIdentity`. No se transmite en el acceso con un nick existente,
-   en el cambio de nick, en la escritura de `DailyRecord` ni en ninguna otra
-   consulta o suscripción.
-2. **Finalidad**: limitar a un Nick por persona, para que una misma persona no
-   pueda inflar el `Ranking_Equipo` creando varias identidades.
+1. **Sale del navegador**: se transmite al backend en exactamente tres
+   operaciones, la consulta de existencia de correo y la creación del registro
+   `UserIdentity` —las dos del alta— y la consulta de titularidad al entrar con
+   un nick ya creado. En las tres, el correo es la clave de la operación y su
+   valor lo acaba de escribir quien lo envía: ninguna respuesta devuelve el
+   correo almacenado de una identidad. No se transmite en el cambio de nick, en
+   la escritura de `DailyRecord` ni en ninguna otra consulta o suscripción.
+2. **Finalidad**: dos usos y ninguno más. Limitar a un Nick por persona, para
+   que una misma persona no pueda inflar el `Ranking_Equipo` creando varias
+   identidades; y comprobar, al entrar con un nick ya creado, que ese nick
+   pertenece a quien lo reclamó, de modo que conocer un nick ajeno no baste
+   para entrar con él.
 3. **Ubicación**: se almacena exclusivamente en el campo `email` de la tabla
    `UserIdentity`, accedida vía AppSync. No se guarda en IndexedDB ni se
    expone en el store de Zustand.
@@ -65,17 +70,20 @@ producto. Sus cinco características:
 
 ## Limitaciones asumidas del acceso por nick
 
-El esquema sin contraseña de `identidad-nick` no autentica a nadie: solo
-comprueba que un Nick exista o esté libre. Esto es una decisión consciente,
-proporcional a un ranking amistoso de hackathon cuyos únicos datos expuestos
-por participante son el Nick, los segundos de buena postura, el nivel y la
-racha de días — nada sensible. Las seis limitaciones siguientes son
-**concesiones asumidas a cambio de esa sencillez, no defectos pendientes de
-corregir**.
+El esquema sin contraseña de `identidad-nick` no autentica a nadie: comprueba
+que un Nick esté libre en el alta, y que pertenezca a un correo concreto en el
+acceso. Esto es una decisión consciente, proporcional a un ranking amistoso de
+hackathon cuyos únicos datos expuestos por participante son el Nick, los
+segundos de buena postura, el nivel y la racha de días — nada sensible. Las
+siete limitaciones siguientes son **concesiones asumidas a cambio de esa
+sencillez, no defectos pendientes de corregir**.
 
-1. **El acceso por Nick no comprueba ningún factor de autenticación.**
-   Cualquier persona que conozca un Nick registrado puede obtener acceso con
-   él y escribir un `DailyRecord` con ese `displayName`.
+1. **El acceso exige el correo del Nick, pero eso no es autenticación.**
+   Entrar con un Nick ya creado pide la pareja (Nick, Correo_Vinculado) y solo
+   se concede si ese Nick es el que reclamó ese correo, así que conocer un Nick
+   ajeno ya no basta. Lo que no hay es ninguna prueba de que quien entra sea el
+   dueño del correo: quien conozca las dos cosas obtiene acceso con ese Nick y
+   puede escribir un `DailyRecord` con ese `displayName`.
    *Origen: Requisito 2 criterio 5.*
    *Motivo asumido: ranking amistoso de hackathon con datos no sensibles
    (Nick, segundos de buena postura, nivel y racha de días).*
@@ -121,6 +129,20 @@ corregir**.
    segundos, rango de puntuación media, coherencia entre nivel y XP) se
    aplican siempre, sin depender de ningún valor enviado por el cliente.
    *Origen: Requisito 13 criterio 9.*
+   *Motivo asumido: ranking amistoso de hackathon con datos no sensibles
+   (Nick, segundos de buena postura, nivel y racha de días).*
+
+7. **La comprobación de titularidad del acceso se puede rodear.** La resuelve
+   el cliente y descansa en que el `email` almacenado no se pueda leer: la
+   aplicación consulta por correo y excluye ese campo de la selección, así que
+   nunca lo trae. Pero las Credenciales_Invitado autorizan la lectura de los
+   modelos `UserIdentity` y `EmailClaim`, y un cliente construido a mano puede
+   pedir el campo `email` en la selección, o listar `EmailClaim`, y recuperar
+   así el correo asociado a un Nick. Para quien haga eso, la comprobación deja
+   de ser un obstáculo. Cerrarlo exige mover la comprobación a una función del
+   lado servidor o restringir la lectura de esos dos modelos; no se ha hecho en
+   esta versión.
+   *Origen: Requisito 2 criterio 11 y Requisito 6 criterio 6.*
    *Motivo asumido: ranking amistoso de hackathon con datos no sensibles
    (Nick, segundos de buena postura, nivel y racha de días).*
 

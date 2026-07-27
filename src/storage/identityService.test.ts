@@ -461,12 +461,14 @@ describe('Property 7: ningún fallo de identidad deja rastro', () => {
       expect(downstream).toHaveLength(0);
     });
 
-    it('signIn con findByNickLower colgado resuelve TIMEOUT sin guardar localmente', async () => {
+    it('signIn con findByEmail colgado resuelve TIMEOUT sin guardar localmente', async () => {
       vi.useFakeTimers();
-      const client = createFakeIdentityClient({ hangOn: new Set(['findByNickLower']) });
+      // signIn consulta por correo, no por nick: la comprobación de titularidad
+      // necesita el nick que reclamó ese correo (Req 2.9).
+      const client = createFakeIdentityClient({ hangOn: new Set(['findByEmail']) });
       const service = createIdentityService(client);
 
-      const pending = service.signIn('nickvalido');
+      const pending = service.signIn('nickvalido', 'alguien@ejemplo.com');
       await vi.advanceTimersByTimeAsync(IDENTITY_TIMEOUT_MS);
       const result = await pending;
 
@@ -608,7 +610,7 @@ describe('Property 7: ningún fallo de identidad deja rastro', () => {
       const client = createFakeIdentityClient();
       const service = createIdentityService(client);
 
-      const result = await service.signIn('nickvalido');
+      const result = await service.signIn('nickvalido', 'alguien@ejemplo.com');
 
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('OFFLINE');
@@ -665,7 +667,7 @@ describe('Property 7: ningún fallo de identidad deja rastro', () => {
       const client = createFakeIdentityClient();
       const service = createIdentityService(client);
 
-      const result = await service.signIn('a');
+      const result = await service.signIn('a', 'alguien@ejemplo.com');
 
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('NICK_INVALID');
@@ -687,16 +689,102 @@ describe('Property 7: ningún fallo de identidad deja rastro', () => {
     });
   });
 
-  describe('NICK_NOT_FOUND', () => {
-    it('signIn con un nick que no existe en un cliente vacío devuelve NICK_NOT_FOUND sin guardar localmente', async () => {
+  describe('NICK_EMAIL_MISMATCH: el acceso comprueba que el nick es de ese correo', () => {
+    /** Alta de partida: «titular» reclamado por «titular@ejemplo.com». */
+    async function conTitular() {
+      const client = createFakeIdentityClient();
+      const service = createIdentityService(client);
+      const alta = await service.signUp('titular', 'titular@ejemplo.com');
+      if (!alta.ok) throw new Error('el alta de partida debería funcionar');
+      identityLocalMocks.saveLocalIdentity.mockClear();
+      return { client, service, identidad: alta.value };
+    }
+
+    it('signIn en un cliente vacío devuelve NICK_EMAIL_MISMATCH sin guardar localmente', async () => {
       const client = createFakeIdentityClient();
       const service = createIdentityService(client);
 
-      const result = await service.signIn('inexistente');
+      const result = await service.signIn('inexistente', 'nadie@ejemplo.com');
 
       expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.error.kind).toBe('NICK_NOT_FOUND');
+      if (!result.ok) expect(result.error.kind).toBe('NICK_EMAIL_MISMATCH');
       expect(identityLocalMocks.saveLocalIdentity).not.toHaveBeenCalled();
+    });
+
+    it('el nick correcto con un correo que no es el suyo NO concede el acceso', async () => {
+      const { service } = await conTitular();
+
+      const result = await service.signIn('titular', 'intruso@ejemplo.com');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('NICK_EMAIL_MISMATCH');
+      expect(identityLocalMocks.saveLocalIdentity).not.toHaveBeenCalled();
+    });
+
+    it('un correo con identidad propia no sirve para entrar con el nick de otro', async () => {
+      const { service } = await conTitular();
+      const otra = await service.signUp('vecino', 'vecino@ejemplo.com');
+      expect(otra.ok).toBe(true);
+      identityLocalMocks.saveLocalIdentity.mockClear();
+
+      const result = await service.signIn('titular', 'vecino@ejemplo.com');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('NICK_EMAIL_MISMATCH');
+      expect(identityLocalMocks.saveLocalIdentity).not.toHaveBeenCalled();
+    });
+
+    it('el mismo rechazo para «correo sin cuenta» y «cuenta con otro nick»: no se distinguen', async () => {
+      // Si los dos casos dieran errores distintos, se podría averiguar qué
+      // correos están registrados probando un nick conocido contra una lista.
+      const { service } = await conTitular();
+
+      const sinCuenta = await service.signIn('titular', 'nadie@ejemplo.com');
+      const otroNick = await service.signIn('inexistente', 'titular@ejemplo.com');
+
+      expect(sinCuenta.ok).toBe(false);
+      expect(otroNick.ok).toBe(false);
+      if (!sinCuenta.ok && !otroNick.ok) {
+        expect(sinCuenta.error).toEqual(otroNick.error);
+      }
+    });
+
+    it('la pareja correcta concede el acceso y adopta el nick almacenado', async () => {
+      const { service, identidad } = await conTitular();
+
+      // Capitalización distinta en los dos campos: ambas se normalizan.
+      const result = await service.signIn('TITULAR', '  Titular@Ejemplo.COM  ');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toEqual(identidad);
+        expect(result.value.nick).toBe('titular');
+      }
+    });
+
+    it('signIn con un correo sintácticamente inválido devuelve EMAIL_INVALID sin emitir ninguna operación', async () => {
+      const client = createFakeIdentityClient();
+      const service = createIdentityService(client);
+
+      const result = await service.signIn('nickvalido', 'no-es-un-correo');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('EMAIL_INVALID');
+      expect(client.getTrace()).toHaveLength(0);
+      expect(identityLocalMocks.saveLocalIdentity).not.toHaveBeenCalled();
+    });
+
+    it('signIn no consulta por nick: el correo almacenado nunca se trae al navegador', async () => {
+      // Consultar por nick obligaría a traerse el correo del titular para
+      // compararlo aquí, y entonces cualquiera que supiese un nick podría
+      // leerlo (Req 9.7). Por eso la única consulta es findByEmail.
+      const { client, service } = await conTitular();
+      const traceLength = client.getTrace().length;
+
+      await service.signIn('titular', 'titular@ejemplo.com');
+
+      const nuevas = client.getTrace().slice(traceLength);
+      expect(nuevas.map((entry) => entry.op)).toEqual(['findByEmail']);
     });
   });
 
@@ -722,7 +810,7 @@ describe('Property 7: ningún fallo de identidad deja rastro', () => {
         expect(clientSignUp.getTrace()).toHaveLength(0);
 
         const clientSignIn = createFakeIdentityClient();
-        const signInResult = await createIdentityService(clientSignIn).signIn(invalidNick);
+        const signInResult = await createIdentityService(clientSignIn).signIn(invalidNick, 'correo@ejemplo.com');
         expect(signInResult.ok).toBe(false);
         if (!signInResult.ok) expect(signInResult.error.kind).toBe('NICK_INVALID');
         expect(clientSignIn.getTrace()).toHaveLength(0);
@@ -848,7 +936,7 @@ describe('Property 8: entrar, salir y volver a entrar es un round trip de identi
         identityLocalMocks.saveLocalIdentity.mockClear();
         const signInVariant = applyRandomCasing(rng, baseNick);
 
-        const signInResult = await service.signIn(signInVariant);
+        const signInResult = await service.signIn(signInVariant, email);
 
         expect(signInResult.ok).toBe(true);
         if (!signInResult.ok) continue; // TypeScript: descarta la rama de error (ya comprobado arriba).
@@ -885,7 +973,10 @@ describe('Property 8: entrar, salir y volver a entrar es un round trip de identi
       expect(secondSignUpResult.error.nick).toBe(original.nick);
 
       identityLocalMocks.saveLocalIdentity.mockClear();
-      const chainedSignInResult = await service.signIn(secondSignUpResult.error.nick);
+      // `emailVariant` es el mismo correo con otra capitalización o espacios:
+      // la normalización lo hace equivalente, así que la comprobación de
+      // titularidad pasa igual (Req 2.9).
+      const chainedSignInResult = await service.signIn(secondSignUpResult.error.nick, emailVariant);
 
       expect(chainedSignInResult.ok).toBe(true);
       if (!chainedSignInResult.ok) continue; // TypeScript: descarta la rama de error (ya comprobado arriba).
@@ -1011,28 +1102,29 @@ describe('Property 10: el cambio de nick preserva identificador y correo', () =>
 // Sobre la traza COMPLETA de operaciones que el Sistema_Identidad emite a
 // través de `IdentityDataClient` en una secuencia mixta de `signUp`,
 // `signIn` y `changeNick`, el Correo_Vinculado solo puede aparecer como
-// argumento en las operaciones del alta (`createEmailClaim`, `getEmailClaim`,
-// `findByEmail` y `createIdentity`, cuyo `UserIdentityInput` incluye
-// `email`). Nunca debe aparecer en `createNickClaim`, `getNickClaim`,
-// `findByNickLower` ni `updateNick`: son las operaciones que usan `signIn` y
-// `changeNick`, que el Requisito 9 criterio 1 exige que nunca transmitan el
-// correo.
+// argumento en las operaciones indexadas por correo (`createEmailClaim`,
+// `getEmailClaim`, `findByEmail` y `createIdentity`, cuyo `UserIdentityInput`
+// incluye `email`). Nunca debe aparecer en `createNickClaim`, `getNickClaim`,
+// `findByNickLower` ni `updateNick`, que van indexadas por nick.
+//
+// El alta ya no es la única familia que transporta el correo: desde que el
+// acceso comprueba que el Nick pertenece a quien lo reclamó (Req 2.9), signIn
+// emite un `findByEmail`. Lo que la propiedad fija sigue siendo lo mismo —el
+// correo viaja solo donde es la clave de la consulta— y `changeNick` continúa
+// sin transmitirlo nunca (Req 9.1).
 //
 // Validates: Requirements 9.1, 9.2, 9.3, 9.7, 9.10
 
 const OUTGOING_DATA_SEED = DEFAULT_SEED + 606;
 
-describe('Property 14: superficie de datos salientes — el correo solo aparece en las operaciones del alta', () => {
+describe('Property 14: superficie de datos salientes — el correo solo aparece en las operaciones indexadas por correo', () => {
   it(`en ${CASES_PER_PROPERTY} escenarios generados (semilla ${OUTGOING_DATA_SEED}), el correo nunca aparece en createNickClaim/getNickClaim/findByNickLower/updateNick tras una secuencia mixta de signUp/signIn/changeNick`, async () => {
     const rng = createRng(OUTGOING_DATA_SEED);
 
-    // Operaciones que sí pueden (y deben) transportar el correo: son
-    // exclusivas del alta.
-    const SIGNUP_ONLY_OPS = new Set(['createEmailClaim', 'getEmailClaim', 'findByEmail', 'createIdentity']);
-    // Operaciones que nunca deben transportar el correo: las usa signIn (Req
-    // 2) y changeNick (Req 5), que el Requisito 9 criterio 1 exige que nunca
-    // transmitan el Correo_Vinculado.
-    const NON_EMAIL_OPS = new Set(['createNickClaim', 'getNickClaim', 'findByNickLower', 'updateNick']);
+    // Operaciones que sí pueden (y deben) transportar el correo: es su clave.
+    const EMAIL_KEYED_OPS = new Set(['createEmailClaim', 'getEmailClaim', 'findByEmail', 'createIdentity']);
+    // Operaciones indexadas por nick: nunca deben transportar el correo.
+    const NICK_KEYED_OPS = new Set(['createNickClaim', 'getNickClaim', 'findByNickLower', 'updateNick']);
 
     for (let scenario = 0; scenario < CASES_PER_PROPERTY; scenario++) {
       identityLocalMocks.saveLocalIdentity.mockClear();
@@ -1054,7 +1146,7 @@ describe('Property 14: superficie de datos salientes — el correo solo aparece 
       const cycles = randInt(rng, 1, 3);
       for (let cycle = 0; cycle < cycles; cycle++) {
         const signInVariant = applyRandomCasing(rng, current.nick);
-        const signInResult = await service.signIn(signInVariant);
+        const signInResult = await service.signIn(signInVariant, email);
         expect(signInResult.ok).toBe(true);
         if (!signInResult.ok) continue; // TypeScript: descarta la rama de error (ya comprobado arriba).
         current = signInResult.value;
@@ -1076,19 +1168,19 @@ describe('Property 14: superficie de datos salientes — el correo solo aparece 
       const emailLower = email.toLowerCase();
 
       for (const entry of trace) {
-        if (!NON_EMAIL_OPS.has(entry.op)) continue;
+        if (!NICK_KEYED_OPS.has(entry.op)) continue;
         const serialized = JSON.stringify(entry.args);
         expect(serialized.includes(email)).toBe(false);
         expect(serialized.toLowerCase().includes(emailLower)).toBe(false);
       }
 
       // Confirmación de cordura del propio test: el correo SÍ aparece en al
-      // menos una de las operaciones legítimas del alta, para descartar que
-      // el escenario generado nunca haya llegado a usar el correo.
-      const signUpOpsWithEmail = trace.filter(
-        (entry) => SIGNUP_ONLY_OPS.has(entry.op) && JSON.stringify(entry.args).toLowerCase().includes(emailLower),
+      // menos una de las operaciones legítimas, para descartar que el
+      // escenario generado nunca haya llegado a usar el correo.
+      const emailKeyedOpsWithEmail = trace.filter(
+        (entry) => EMAIL_KEYED_OPS.has(entry.op) && JSON.stringify(entry.args).toLowerCase().includes(emailLower),
       );
-      expect(signUpOpsWithEmail.length).toBeGreaterThan(0);
+      expect(emailKeyedOpsWithEmail.length).toBeGreaterThan(0);
     }
   });
 });
@@ -1158,7 +1250,7 @@ describe('claim de nick huérfana: un nick abandonado vuelve a estar disponible'
     const { service, identidad } = await conNickAbandonado();
     await service.changeNick(identidad, 'vicma');
 
-    const entrada = await service.signIn('vicma');
+    const entrada = await service.signIn('vicma', 'vic@example.com');
 
     expect(entrada.ok).toBe(true);
     if (entrada.ok) expect(entrada.value.nick).toBe('vicma');

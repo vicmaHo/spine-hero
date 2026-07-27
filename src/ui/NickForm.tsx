@@ -102,7 +102,7 @@ export function NickForm({ onBack }: NickFormProps) {
     useAppStore.setState({ identityMessage: null, identityMessageField: null, emailTakenNick: null });
   };
 
-  const canSubmitNow = canSubmit(mode, nick, email, identityBusy);
+  const canSubmitNow = canSubmit(nick, email, identityBusy);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault(); // Enter no recarga la página (Req 8.8)
@@ -110,16 +110,21 @@ export function NickForm({ onBack }: NickFormProps) {
     if (mode === 'signUp') {
       await signUpNick(nick, email);
     } else {
-      await signInNick(nick);
+      await signInNick(nick, email);
     }
   };
 
+  // El correo ya escrito es el que reclamó ese nick —es justo lo que acaba de
+  // decir el error EMAIL_TAKEN—, así que la comprobación del acceso pasa.
   const handleEnterExistingNick = async () => {
-    if (emailTakenNick) await signInNick(emailTakenNick);
+    if (emailTakenNick) await signInNick(emailTakenNick, email);
   };
 
-  const nickInvalid = identityMessage !== null && identityMessageField === 'nick';
-  const emailInvalid = identityMessage !== null && identityMessageField === 'email';
+  // 'both' marca los dos campos: el fallo está en la pareja (nick, correo).
+  const nickInvalid =
+    identityMessage !== null && (identityMessageField === 'nick' || identityMessageField === 'both');
+  const emailInvalid =
+    identityMessage !== null && (identityMessageField === 'email' || identityMessageField === 'both');
   const isRetryable = identityMessage !== null && identityMessageField === null;
 
   /** Pestaña del selector de modo: dorada la activa, madera la otra. */
@@ -211,29 +216,33 @@ export function NickForm({ onBack }: NickFormProps) {
               </p>
             </div>
 
-            {/* Campo Correo (solo en «Crear nick», Req 2.2) */}
-            {mode === 'signUp' && (
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="email-input" className="rpg-label">CORREO ELECTRÓNICO</label>
-                <input
-                  ref={emailInputRef}
-                  id="email-input"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  maxLength={254}
-                  aria-describedby="email-help"
-                  aria-invalid={emailInvalid}
-                  className="rpg-field w-full"
-                  placeholder="tu@correo.com"
-                  autoComplete="off"
-                />
-                {/* Siempre visible mientras el modo es «Crear nick» (Req 8.2) */}
-                <p id="email-help" className="text-[11px] font-medium leading-snug text-[#5c4128]">
-                  Tu correo solo se usa para evitar nicks duplicados. En el ranking solo aparece tu nick
-                </p>
-              </div>
-            )}
+            {/* Campo Correo. Presente en los dos modos: en «Crear nick» vincula
+                el correo al nick, y en «Ya tengo nick» es lo que demuestra que
+                ese nick es tuyo (Req 2.2, 2.9). */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="email-input" className="rpg-label">CORREO ELECTRÓNICO</label>
+              <input
+                ref={emailInputRef}
+                id="email-input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                maxLength={254}
+                aria-describedby="email-help"
+                aria-invalid={emailInvalid}
+                className="rpg-field w-full"
+                placeholder="tu@correo.com"
+                autoComplete="off"
+              />
+              {/* Siempre visible, sin interacción previa (Req 8.2). El literal
+                  del alta es el que fija el requisito; en el acceso se explica
+                  para qué se pide, que es otra cosa. */}
+              <p id="email-help" className="text-[11px] font-medium leading-snug text-[#5c4128]">
+                {mode === 'signUp'
+                  ? 'Tu correo solo se usa para evitar nicks duplicados. En el ranking solo aparece tu nick'
+                  : 'El correo con el que creaste el nick. Comprobamos que el nick es tuyo antes de darte acceso'}
+              </p>
+            </div>
 
             {/* Mensaje de error / estado (Req 8.9: role="alert") */}
             {identityMessage && (

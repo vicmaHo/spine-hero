@@ -276,7 +276,7 @@ export type IdentityError =
   | { kind: 'EMAIL_INVALID' }
   | { kind: 'NICK_TAKEN' }
   | { kind: 'EMAIL_TAKEN'; nick: string }
-  | { kind: 'NICK_NOT_FOUND' }
+  | { kind: 'NICK_EMAIL_MISMATCH' }
   | { kind: 'OFFLINE' }
   | { kind: 'TIMEOUT' }
   | { kind: 'BACKEND'; detail: string }
@@ -326,8 +326,8 @@ export function createIdentityService(client: IdentityDataClient): IdentityServi
 export interface IdentityService {
   /** Modo «Crear nick». */
   signUp(rawNick: string, rawEmail: string): Promise<IdentityResult<ActiveIdentity>>;
-  /** Modo «Ya tengo nick». No transmite nunca el correo. */
-  signIn(rawNick: string): Promise<IdentityResult<ActiveIdentity>>;
+  /** Modo «Ya tengo nick». Exige el correo con el que se reclamó el nick. */
+  signIn(rawNick: string, rawEmail: string): Promise<IdentityResult<ActiveIdentity>>;
   /** Cambio de nick conservando id y correo. */
   changeNick(current: ActiveIdentity, rawNick: string): Promise<IdentityResult<ActiveIdentity>>;
 }
@@ -344,9 +344,20 @@ Decisiones de comportamiento:
   10 s que corta y devuelve `TIMEOUT`. Los plazos de 3 s de los requisitos se
   cumplen por diseño, no por temporizador: toda consulta de unicidad es **una
   sola** petición resuelta por índice o por clave de partición.
-- **`signIn` adopta el nick almacenado**, no el escrito: `findByNickLower`
-  devuelve `{nick, id}` y ese `nick` es el que se persiste (Requisito 2
-  criterio 3).
+- **`signIn` comprueba la titularidad consultando por correo**, no por nick
+  (Requisito 2 criterios 3 y 11). La comprobación necesita enfrentar dos
+  valores, y el que se traiga del Sistema_Data es el que queda expuesto:
+  consultando por nick habría que traerse el `email` almacenado para
+  compararlo en el navegador, y entonces cualquiera que supiese un nick podría
+  leer el correo de su titular. Consultando por correo, lo que vuelve es el
+  nick —un dato que el Ranking_Equipo ya publica— y el correo almacenado nunca
+  sale del servidor. Un solo `findByEmail`, sin `findByNickLower`.
+- **`signIn` adopta el nick almacenado**, no el escrito: `findByEmail` devuelve
+  `{nick, id}` y ese `nick` es el que se persiste (Requisito 2 criterio 3).
+- **Un único rechazo en `signIn`.** `NICK_EMAIL_MISMATCH` cubre tanto «ese
+  correo no tiene identidad» como «la tiene con otro nick» (Requisito 2
+  criterio 9): separarlos permitiría averiguar qué correos están registrados
+  probando un nick conocido contra una lista de direcciones.
 - **`changeNick`** primero consulta `findByNickLower`; si hay una identidad
   distinta de la propia ⇒ `NICK_TAKEN`. Si el `nickLower` no cambia (solo varía
   la capitalización) se salta la claim y actualiza directamente. Nunca envía el
@@ -397,13 +408,13 @@ interface IdentitySlice {
   identityPhase: IdentityPhase;
   identityBusy: boolean;                // «Comprobando…» (Req 8.3)
   identityMessage: string | null;       // ya traducido a español
-  identityMessageField: 'nick' | 'email' | null;
+  identityMessageField: 'nick' | 'email' | 'both' | null;
   emailTakenNick: string | null;        // habilita «Entrar con ese nick» (Req 3.3)
   localSaveFailed: boolean;             // aviso no bloqueante (Req 4.8)
 
   bootstrapIdentity: () => Promise<void>;
   signUpNick: (nick: string, email: string) => Promise<void>;
-  signInNick: (nick: string) => Promise<void>;
+  signInNick: (nick: string, email: string) => Promise<void>;
   changeNick: (nick: string) => Promise<void>;
   switchUser: () => Promise<void>;      // «Cambiar de usuario»
   continueWithoutNick: () => void;
@@ -606,7 +617,7 @@ lo asume `identityPhase`.
 | `EMAIL_INVALID` | «Introduce un correo electrónico válido» | `email` |
 | `NICK_TAKEN` | «Ese nick ya está en uso, prueba otro» | `nick` |
 | `EMAIL_TAKEN` | «Ese correo ya tiene el nick «{nick}» asociado. Entra con él o usa otro correo» | `email` |
-| `NICK_NOT_FOUND` | «Ese nick no está registrado» | `nick` |
+| `NICK_EMAIL_MISMATCH` | «Ese nick y ese correo no coinciden. Comprueba los dos e inténtalo de nuevo» | `both` |
 | `OFFLINE` | «Sin conexión para comprobar el nick. Puedes continuar sin nick» | `nick` |
 | `TIMEOUT` / `BACKEND` | «No se pudo comprobar el nick. Revisa tu conexión e inténtalo de nuevo» | `null` |
 | `LOCAL_WRITE_FAILED` | «Tu nick no se ha podido guardar para el próximo arranque» | `null` |
@@ -812,7 +823,7 @@ como excepciones y el token `ANTICHEAT_REJECT` es el contrato con el cliente.
 | Correo fuera del patrón | `EMAIL_INVALID` | Mensaje literal en el campo de correo | Ninguna operación de red |
 | `nickLower` ocupado | `NICK_TAKEN` | «Ese nick ya está en uso, prueba otro» | Sin registro nuevo, sin escritura local |
 | Correo ocupado | `EMAIL_TAKEN {nick}` | Mensaje con el nick y control «Entrar con ese nick» | Sin registro nuevo, sin escritura local |
-| Nick inexistente en «Ya tengo nick» | `NICK_NOT_FOUND` | «Ese nick no está registrado» + control para pasar a «Crear nick» conservando el nick | Sin cambios |
+| Pareja (nick, correo) que no coincide en «Ya tengo nick» | `NICK_EMAIL_MISMATCH` | «Ese nick y ese correo no coinciden…» en los dos campos + control para pasar a «Crear nick» conservando lo escrito | Sin cambios |
 | `navigator.onLine === false` | `OFFLINE` | Mensaje de sin conexión y «Continuar sin nick» visible | Ninguna operación de red |
 | Sin respuesta en 10 s | `TIMEOUT` | Mensaje de reintento con control habilitado | Operación abandonada, sin cambios |
 | Error de AppSync o del backend | `BACKEND {detail}` | Mismo mensaje de reintento | Sin cambios; `detail` no se muestra al usuario |

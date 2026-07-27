@@ -11,7 +11,13 @@ import type { IdentityError } from '../storage/identityErrors';
 
 export interface IdentityMessage {
   text: string;
-  field: 'nick' | 'email' | null;
+  /**
+   * Campo del formulario que el mensaje señala. `'both'` marca los dos: el
+   * fallo está en la pareja (Nick, Correo_Vinculado), no en uno de ellos.
+   * `null` significa que el fallo no es de un dato escrito, y es lo que la
+   * interfaz usa para ofrecer «Reintentar».
+   */
+  field: 'nick' | 'email' | 'both' | null;
 }
 
 export function identityErrorMessage(error: IdentityError): IdentityMessage {
@@ -36,10 +42,14 @@ export function identityErrorMessage(error: IdentityError): IdentityMessage {
         text: `Ese correo ya tiene el nick «${error.nick}» asociado. Entra con él o usa otro correo`,
         field: 'email',
       };
-    case 'NICK_NOT_FOUND':
+    case 'NICK_EMAIL_MISMATCH':
+      // Un único texto para «ese correo no tiene cuenta» y «la tiene con otro
+      // nick»: el mensaje no revela cuál de los dos datos falla, ni si el
+      // correo está registrado (ver el comentario de la variante en
+      // `identityErrors.ts`).
       return {
-        text: 'Ese nick no está registrado',
-        field: 'nick',
+        text: 'Ese nick y ese correo no coinciden. Comprueba los dos e inténtalo de nuevo',
+        field: 'both',
       };
     case 'OFFLINE':
       return {

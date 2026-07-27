@@ -57,7 +57,7 @@ interface AppState {
   identityPhase: IdentityPhase;
   identityBusy: boolean;                // «Comprobando…» (Req 8.3)
   identityMessage: string | null;       // ya traducido a español
-  identityMessageField: 'nick' | 'email' | null;
+  identityMessageField: 'nick' | 'email' | 'both' | null;
   emailTakenNick: string | null;        // habilita «Entrar con ese nick» (Req 3.3)
   localSaveFailed: boolean;             // aviso no bloqueante (Req 4.8)
 
@@ -72,7 +72,7 @@ interface AppState {
 
   bootstrapIdentity: () => Promise<void>;
   signUpNick: (nick: string, email: string) => Promise<void>;
-  signInNick: (nick: string) => Promise<void>;
+  signInNick: (nick: string, email: string) => Promise<void>;
   changeNick: (nick: string) => Promise<void>;
   switchUser: () => Promise<void>;      // «Cambiar de usuario»
   continueWithoutNick: () => void;
@@ -394,10 +394,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  signInNick: async (nick: string) => {
+  signInNick: async (nick: string, email: string) => {
     set({ identityBusy: true, identityMessage: null, identityMessageField: null });
 
-    const result = await createIdentityService(createRealIdentityClient()).signIn(nick);
+    const result = await createIdentityService(createRealIdentityClient()).signIn(nick, email);
 
     if (result.ok) {
       const localCheck = await loadLocalIdentity();

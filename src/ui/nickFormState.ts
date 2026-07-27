@@ -25,18 +25,16 @@ function isEmailValid(email: string): boolean {
 }
 
 /**
- * El envío está habilitado si y solo si no hay operación en curso y los
- * campos del modo activo son válidos (solo el Nick en 'signIn'; Nick y
- * correo en 'signUp').
+ * El envío está habilitado si y solo si no hay operación en curso y tanto el
+ * Nick como el correo son válidos.
+ *
+ * La regla ya no depende del modo: «Ya tengo nick» también pide el correo,
+ * porque el acceso comprueba que el Nick pertenece a quien lo reclamó
+ * (Req 2.2, 2.9). Por eso `canSubmit` no recibe `mode`.
  */
-export function canSubmit(
-  mode: NickFormMode,
-  nick: string,
-  email: string,
-  busy: boolean,
-): boolean {
+export function canSubmit(nick: string, email: string, busy: boolean): boolean {
   if (busy) return false;
   if (!isNickValid(nick)) return false;
-  if (mode === 'signUp' && !isEmailValid(email)) return false;
+  if (!isEmailValid(email)) return false;
   return true;
 }

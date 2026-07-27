@@ -255,6 +255,14 @@ Fronteras que ninguna tarea rompe: `src/contracts/**`, `src/vision/`,
   - Comprobar diff vacío en `src/contracts/`, `src/vision/`, `src/posture/`, `src/game/`, `src/feedback/` y `src/pip/`, y cero apariciones de `Authenticator`, `useAuthenticator`, `fetchUserAttributes` y `fetchAuthSession` en `src/`
   - _Requirements: 11.1, 11.2, 11.6, 11.7, 11.8, 14.7, 14.8_
 
+- [x] 14. Comprobación de titularidad en «Ya tengo nick» (incremento posterior)
+  - Añadido después de cerrar la tarea 13, a petición del usuario: el acceso concedía el nick a quien lo escribiera, sin ningún otro dato
+  - `signIn(rawNick, rawEmail)` resuelto con un único `findByEmail` y comparación del `nickLower` devuelto; sustituir `NICK_NOT_FOUND` por `NICK_EMAIL_MISMATCH`, un solo rechazo para «correo sin identidad» y «identidad con otro nick»
+  - Campo de correo en los dos modos del Formulario_Acceso; `canSubmit` pierde el parámetro `mode`; `identityMessageField` gana `'both'`
+  - Actualizada la Propiedad 14: el correo viaja ahora también en el acceso, y lo que la propiedad fija es que solo aparece en las operaciones indexadas por correo
+  - Declarada en `docs/PRIVACY.md` la limitación 7: la comprobación la resuelve el cliente y las Credenciales_Invitado permiten leer el correo, así que se puede rodear
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.8, 2.9, 2.10, 2.11, 8.2, 8.5, 9.1, 10.1, 10.10_
+
 ## Notes
 
 - Las subtareas marcadas con `*` son opcionales y pueden saltarse para llegar antes a un MVP.

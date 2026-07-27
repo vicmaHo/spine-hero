@@ -47,11 +47,19 @@ describe('identityErrorMessage', () => {
     });
   });
 
-  it('NICK_NOT_FOUND → mensaje de nick no registrado, campo nick', () => {
-    expect(identityErrorMessage({ kind: 'NICK_NOT_FOUND' })).toEqual({
-      text: 'Ese nick no está registrado',
-      field: 'nick',
+  it('NICK_EMAIL_MISMATCH → mensaje que no revela cuál de los dos falla, ambos campos', () => {
+    expect(identityErrorMessage({ kind: 'NICK_EMAIL_MISMATCH' })).toEqual({
+      text: 'Ese nick y ese correo no coinciden. Comprueba los dos e inténtalo de nuevo',
+      field: 'both',
     });
+  });
+
+  it('NICK_EMAIL_MISMATCH → el texto no menciona si el correo está registrado', () => {
+    // La variante cubre dos motivos (correo sin cuenta, o cuenta con otro nick)
+    // y el mensaje no debe permitir distinguirlos: si lo hiciera, se podría
+    // averiguar qué correos están dados de alta probando un nick conocido.
+    const { text } = identityErrorMessage({ kind: 'NICK_EMAIL_MISMATCH' });
+    expect(text).not.toMatch(/registrad|no existe|desconocid|en uso/i);
   });
 
   it('OFFLINE → mensaje de sin conexión, campo nick', () => {

@@ -49,8 +49,11 @@ export interface IdentityDataClient {
 export interface IdentityService {
   /** Modo «Crear nick». */
   signUp(rawNick: string, rawEmail: string): Promise<IdentityResult<ActiveIdentity>>;
-  /** Modo «Ya tengo nick». No transmite nunca el correo. */
-  signIn(rawNick: string): Promise<IdentityResult<ActiveIdentity>>;
+  /**
+   * Modo «Ya tengo nick». Exige el Correo_Vinculado con el que se reclamó el
+   * Nick y solo concede el acceso si ese correo es el titular de ese Nick.
+   */
+  signIn(rawNick: string, rawEmail: string): Promise<IdentityResult<ActiveIdentity>>;
   /** Cambio de nick conservando id y correo. */
   changeNick(current: ActiveIdentity, rawNick: string): Promise<IdentityResult<ActiveIdentity>>;
 }
@@ -189,29 +192,48 @@ export function createIdentityService(client: IdentityDataClient): IdentityServi
     }
   }
 
-  async function signIn(rawNick: string): Promise<IdentityResult<ActiveIdentity>> {
+  /**
+   * Modo «Ya tengo nick»: comprueba que el Nick pertenece al Correo_Vinculado
+   * que lo reclamó (Req 2.3, 2.9).
+   *
+   * La consulta va **por correo**, no por nick. La comprobación necesita
+   * enfrentar dos valores, y el que se traiga del Sistema_Data es el que queda
+   * expuesto: consultando por nick habría que traerse el correo almacenado
+   * para compararlo en el navegador, y entonces cualquiera que supiese un nick
+   * podría leer el correo de su titular. Consultando por correo, lo que vuelve
+   * es el nick —un dato que el Ranking_Equipo ya publica— y el correo nunca
+   * sale del servidor (Req 9.7).
+   */
+  async function signIn(
+    rawNick: string,
+    rawEmail: string,
+  ): Promise<IdentityResult<ActiveIdentity>> {
     // Validación pura antes de cualquier red (Req 2.7): ninguna operación se
-    // emite si el nick no cumple su patrón.
+    // emite si el nick o el correo no cumplen su patrón.
     if (!isValidNick(rawNick)) return { ok: false, error: { kind: 'NICK_INVALID' } };
+    if (!isValidEmail(rawEmail)) return { ok: false, error: { kind: 'EMAIL_INVALID' } };
 
     // Única lectura del navegador que hace el servicio (Req 12.6).
     if (navigator.onLine === false) return { ok: false, error: { kind: 'OFFLINE' } };
 
     const nickLower = toNickLower(normalizeNick(rawNick));
+    const email = normalizeEmail(rawEmail);
 
     try {
-      const found = await withTimeout(client.findByNickLower(nickLower), IDENTITY_TIMEOUT_MS);
+      const owner = await withTimeout(client.findByEmail(email), IDENTITY_TIMEOUT_MS);
 
-      if (found === null) {
-        // Req 2.4: no crear ningún registro, no escribir en el Almacen_Local_Identidad.
-        return { ok: false, error: { kind: 'NICK_NOT_FOUND' } };
+      // Un solo rechazo para los dos motivos: ese correo no tiene identidad, o
+      // la tiene con otro nick. Req 2.4: no se crea ningún registro ni se
+      // escribe en el Almacen_Local_Identidad.
+      if (owner === null || toNickLower(owner.nick) !== nickLower) {
+        return { ok: false, error: { kind: 'NICK_EMAIL_MISMATCH' } };
       }
 
       // Req 2.3: se adopta el nick tal como está almacenado, no como lo
-      // escribió el usuario. `findByNickLower` ya lo devuelve así.
+      // escribió el usuario. `findByEmail` ya lo devuelve así.
       // El fallo de escritura local no revoca el acceso concedido (Req 4.8).
-      await saveLocalIdentity(found);
-      return { ok: true, value: found };
+      await saveLocalIdentity(owner);
+      return { ok: true, value: owner };
     } catch (err) {
       return { ok: false, error: toBackendError(err) };
     }
