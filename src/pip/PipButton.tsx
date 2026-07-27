@@ -45,8 +45,15 @@ export function PipButton() {
       function PipApp() {
         const gameState = useAppStore((s) => s.game);
         const lastFrame = useAppStore((s) => s.frame);
+        const calibrate = useAppStore((s) => s.calibrate);
 
-        return <PipView gameState={gameState} lastFrame={lastFrame} />;
+        return (
+          <PipView
+            gameState={gameState}
+            lastFrame={lastFrame}
+            onCalibrate={calibrate}
+          />
+        );
       }
 
       root.render(<PipApp />);

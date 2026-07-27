@@ -252,7 +252,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
               <li key={link.id}>
                 <button
                   onClick={() => goTo(link.id)}
-                  className="text-[15px] font-semibold text-[#e2c793] transition-colors hover:text-[#f2cf6b]"
+                  className="rpg-navlink text-[15px] font-semibold text-[#e2c793] transition-colors hover:text-[#f2cf6b]"
                 >
                   {link.label}
                 </button>

@@ -3,7 +3,6 @@ import { useAppStore } from '../store/useAppStore';
 import { VideoThumbnail } from './VideoThumbnail';
 import { StatusIndicator } from './StatusIndicator';
 import { AvatarCanvas } from './AvatarCanvas';
-import { BenchmarksPanel } from './BenchmarksPanel';
 import { SyncControl } from './SyncControl';
 import { TeamCodeInput } from './TeamCodeInput';
 import { RankingPanel } from './RankingPanel';
@@ -169,7 +168,6 @@ export function Dashboard({ onBackToLanding }: DashboardProps) {
   const start = useAppStore((s) => s.start);
   const stop = useAppStore((s) => s.stop);
   const calibrate = useAppStore((s) => s.calibrate);
-  const setSource = useAppStore((s) => s.setSource);
   const calibration = useAppStore((s) => s.calibration);
   const calibrationError = useAppStore((s) => s.calibrationError);
   const game = useAppStore((s) => s.game);
@@ -453,20 +451,10 @@ export function Dashboard({ onBackToLanding }: DashboardProps) {
                 style={{ background: 'linear-gradient(90deg, transparent, rgba(92,65,40,0.45), transparent)' }}
               />
 
-              {/* Selector de fuente */}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="source-select" className="rpg-label">FUENTE</label>
-                <select
-                  id="source-select"
-                  value={source}
-                  onChange={(e) => setSource(e.target.value as 'mock' | 'real')}
-                  disabled={isRunning}
-                  className="rpg-field w-full"
-                >
-                  <option value="mock">Mock (guion cíclico)</option>
-                  <option value="real">Cámara (real)</option>
-                </select>
-              </div>
+              {/* El selector de fuente (mock / cámara) se retiró: era una
+                  herramienta de pruebas. La fuente la fija el store en 'real'.
+                  Para recuperarlo, volver a montar un <select> sobre
+                  `source` y `setSource`, que siguen en el store. */}
 
               {/* Identidad, código de equipo y sincronización */}
               <div className="mt-auto flex flex-col gap-3 pt-1">
@@ -482,10 +470,10 @@ export function Dashboard({ onBackToLanding }: DashboardProps) {
             <RankingPanel />
           </div>
 
-          {/* ═══════════ Rendimiento del pipeline ═══════════ */}
-          <div className="col-span-12">
-            <BenchmarksPanel />
-          </div>
+          {/* El panel de Rendimiento (BenchmarksPanel) se retiró de la vista por
+              petición de producto. El componente y el cálculo de `perf` del
+              store siguen intactos: para recuperarlo basta importarlo y
+              montarlo aquí de nuevo. */}
         </div>
 
         {/* Lema del pie */}

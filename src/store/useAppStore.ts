@@ -138,7 +138,10 @@ function computePerf(): PerfStats {
 
 export const useAppStore = create<AppState>((set, get) => ({
   // --- Estado inicial ---
-  source: 'mock',
+  // La interfaz ya no ofrece selector de fuente: la cámara real es el único
+  // camino del usuario. `setSource` y la fuente falsa siguen existiendo para
+  // los tests y para volver a exponer el selector si hiciera falta.
+  source: 'real',
   frame: null,
   game: INITIAL_GAME_STATE,
   lastEvents: [],
