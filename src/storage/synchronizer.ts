@@ -2,13 +2,16 @@ import type { Checkpoint } from '../contracts/sync';
 import { buildCheckpoint } from './checkpointBuilder';
 import { getDay, getProfile, getSyncedRecordId, setSyncedRecordId } from './db';
 import { todayLocalDate } from './dateKey';
-import { computeStreakUpdate } from './streakCalculator';
-import type { StreakState } from './streakCalculator';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
-import { fetchAuthSession, fetchUserAttributes } from 'aws-amplify/auth';
+import type { ActiveIdentity } from './identityErrors';
 
 type DataClient = ReturnType<typeof generateClient<Schema>>;
+
+export interface SynchronizerDeps {
+  /** Nick activo y su id, o null si no hay identidad. Inyectado por el store. */
+  getIdentity: () => ActiveIdentity | null;
+}
 
 export interface SynchronizerConfig {
   intervalMs: number;        // 300_000 (5 min)
@@ -59,56 +62,10 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Valida el checkpoint contra el servidor antes de persistir el update. Los
- * valores previos vienen del servidor (nunca de datos locales, que el usuario
- * podría manipular).
- *
- * Fail-safe: lanza SOLO si el backend rechaza por anti-trampa. Cualquier fallo
- * de infraestructura se ignora para no bloquear la sincronización.
- */
-async function assertNotCheating(
-  client: DataClient,
-  existingId: string,
-  checkpoint: Checkpoint,
-): Promise<void> {
-  let rejected = false;
-
-  try {
-    const { data: current } = await client.models.DailyRecord.get({ id: existingId });
-    // Sin registro en la nube no hay incremento que validar
-    if (!current) return;
-
-    const { errors } = await client.mutations.validateAndUpdateDailyRecord({
-      id: existingId,
-      date: checkpoint.date,
-      goodPostureSeconds: checkpoint.goodPostureSeconds,
-      previousGoodPostureSeconds: current.goodPostureSeconds,
-      previousUpdatedAt: current.updatedAt,
-      longestFlowStreak: checkpoint.longestFlowStreak,
-      avgScore: checkpoint.avgScore,
-      level: checkpoint.level,
-      xp: checkpoint.xp,
-      teamCode: checkpoint.teamCode,
-    });
-
-    rejected = isAntiCheatRejection(errors);
-
-    if (!rejected && errors?.length && import.meta.env.DEV) {
-      console.warn('[sync] validación anti-trampa no disponible, se persiste igual:', errors);
-    }
-  } catch (err) {
-    if (import.meta.env.DEV) console.warn('[sync] validación anti-trampa no ejecutada:', err);
-    return;
-  }
-
-  // Fuera del try para que el rechazo legítimo se propague y aborte el update.
-  if (rejected) {
-    throw new Error(`${ANTICHEAT_REJECT_TOKEN}: checkpoint rechazado por el servidor`);
-  }
-}
-
-export function createSynchronizer(config?: Partial<SynchronizerConfig>): Synchronizer {
+export function createSynchronizer(
+  deps: SynchronizerDeps,
+  config?: Partial<SynchronizerConfig>,
+): Synchronizer {
   const cfg: SynchronizerConfig = { ...DEFAULT_CONFIG, ...config };
 
   let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -129,15 +86,6 @@ export function createSynchronizer(config?: Partial<SynchronizerConfig>): Synchr
     void syncNow();
   };
 
-  async function isAuthenticated(): Promise<boolean> {
-    try {
-      const session = await fetchAuthSession();
-      return session.tokens !== undefined;
-    } catch {
-      return false;
-    }
-  }
-
   async function syncNow(): Promise<void> {
     // Guard: no enviar si no hay red
     if (!navigator.onLine) return;
@@ -146,8 +94,9 @@ export function createSynchronizer(config?: Partial<SynchronizerConfig>): Synchr
     if (syncing) return;
     syncing = true;
     try {
-      // Guard: no enviar si no hay sesión autenticada
-      if (!(await isAuthenticated())) return;
+      // Guard: sin identidad activa no se emite ninguna operación (Req 7.4, 14.8)
+      const identity = deps.getIdentity();
+      if (identity === null) return;
 
       const today = todayLocalDate();
       const minutes = await getDay(today);
@@ -158,26 +107,23 @@ export function createSynchronizer(config?: Partial<SynchronizerConfig>): Synchr
 
       const checkpoint: Checkpoint = buildCheckpoint(today, minutes, profile, profile.teamCode);
 
-      // Obtener displayName del usuario (email como fallback legible)
-      let displayName: string | undefined;
-      try {
-        const attrs = await fetchUserAttributes();
-        displayName = attrs.email ?? undefined;
-      } catch {
-        // Si falla, no bloqueamos el sync
-      }
+      // El Nick activo tal como está almacenado, sin recortes ni normalización (Req 7.1)
+      const displayName = identity.nick;
 
-      const client = generateClient<Schema>();
+      // `authMode` explícito: sin sesión de Cognito, las Credenciales_Invitado
+      // son las únicas con las que el Sincronizador puede escribir (Req 13.2).
+      const client = generateClient<Schema>({ authMode: 'identityPool' });
 
-      // Retry con backoff exponencial
+      // Retry con backoff exponencial. Un rechazo anti-trampa NO se reintenta:
+      // los mismos números volverían a rechazarse (Req 13.13).
       for (let attempt = 0; attempt < cfg.maxRetries; attempt++) {
         try {
           await upsertDailyRecord(client, today, checkpoint, displayName);
-
-          // Sync exitoso: actualizar streak
-          await syncStreak(client, today);
           return;
-        } catch {
+        } catch (err) {
+          const message = err instanceof Error ? err.message : '';
+          if (message.includes(ANTICHEAT_REJECT_TOKEN)) return;
+
           // Si aún quedan reintentos, esperar con backoff
           if (attempt < cfg.maxRetries - 1) {
             const backoffMs = cfg.baseRetryMs * Math.pow(2, attempt);
@@ -192,63 +138,59 @@ export function createSynchronizer(config?: Partial<SynchronizerConfig>): Synchr
   }
 
   /**
-   * Upsert del DailyRecord del día: si ya existe un id sincronizado para hoy,
-   * lo ACTUALIZA; si no, lo CREA y guarda su id para futuros updates. Así un
-   * mismo día no genera múltiples filas (que inflarían el ranking).
+   * Upsert del DailyRecord del día exclusivamente a través de
+   * `validateAndUpdateDailyRecord`: la Lambda es quien decide (rules.ts) y
+   * quien persiste (create sin `id`, update con `id`). El cliente nunca llama
+   * a `client.models.DailyRecord.create/update` directamente, así el
+   * Validador_AntiTrampa cubre el 100% de las escrituras del Sincronizador.
    */
   async function upsertDailyRecord(
     client: DataClient,
     today: string,
     checkpoint: Checkpoint,
-    displayName: string | undefined,
+    displayName: string,
   ): Promise<void> {
     const existingId = await getSyncedRecordId(today);
 
+    // Si hay un registro previo sincronizado, se envían también sus valores
+    // previos para que el Validador_AntiTrampa pueda evaluar INCREMENT_VS_ELAPSED.
+    let previousGoodPostureSeconds: number | undefined;
+    let previousUpdatedAt: string | undefined;
     if (existingId) {
-      await assertNotCheating(client, existingId, checkpoint);
-
-      const { errors } = await client.models.DailyRecord.update({
-        id: existingId,
-        ...checkpoint,
-        displayName,
-      });
-      if (errors?.length) throw new Error('DailyRecord.update falló');
-      return;
-    }
-
-    const { data, errors } = await client.models.DailyRecord.create({
-      ...checkpoint,
-      displayName,
-    });
-    if (errors?.length || !data?.id) throw new Error('DailyRecord.create falló');
-    await setSyncedRecordId(today, data.id);
-  }
-
-  async function syncStreak(client: DataClient, today: string): Promise<void> {
-    try {
-      // Obtener streak existente del usuario
-      const { data: streaks } = await client.models.Streak.list();
-      const existing: StreakState | null = streaks.length > 0
-        ? {
-            currentDays: streaks[0].currentDays as number,
-            bestDays: streaks[0].bestDays as number,
-            lastActiveDate: streaks[0].lastActiveDate as string,
-          }
-        : null;
-
-      const updated = computeStreakUpdate(existing, today);
-
-      if (streaks.length > 0) {
-        await client.models.Streak.update({
-          id: streaks[0].id as string,
-          ...updated,
-        });
-      } else {
-        await client.models.Streak.create(updated);
+      try {
+        const { data: current } = await client.models.DailyRecord.get({ id: existingId });
+        if (current) {
+          previousGoodPostureSeconds = current.goodPostureSeconds;
+          previousUpdatedAt = current.updatedAt;
+        }
+      } catch {
+        // Si el get falla, se envía la mutación sin valores previos: el
+        // Validador_AntiTrampa simplemente no evalúa INCREMENT_VS_ELAPSED.
       }
-    } catch {
-      // Error en streak no bloquea el flujo principal
     }
+
+    const { data, errors } = await client.mutations.validateAndUpdateDailyRecord({
+      id: existingId ?? undefined,
+      date: checkpoint.date,
+      displayName,
+      goodPostureSeconds: checkpoint.goodPostureSeconds,
+      previousGoodPostureSeconds,
+      previousUpdatedAt,
+      longestFlowStreak: checkpoint.longestFlowStreak,
+      avgScore: checkpoint.avgScore,
+      level: checkpoint.level,
+      xp: checkpoint.xp,
+      teamCode: checkpoint.teamCode,
+    });
+
+    if (isAntiCheatRejection(errors)) {
+      throw new Error(`${ANTICHEAT_REJECT_TOKEN}: checkpoint rechazado por el servidor`);
+    }
+    if (errors?.length || !data?.id) {
+      throw new Error('validateAndUpdateDailyRecord falló');
+    }
+
+    await setSyncedRecordId(today, data.id);
   }
 
   function start(): void {

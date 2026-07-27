@@ -7,6 +7,7 @@ import { BenchmarksPanel } from './BenchmarksPanel';
 import { SyncControl } from './SyncControl';
 import { TeamCodeInput } from './TeamCodeInput';
 import { RankingPanel } from './RankingPanel';
+import { GuestNotice } from './GuestNotice';
 import type { PostureError } from '../contracts/posture';
 
 const STATUS_BG: Record<string, string> = {
@@ -52,6 +53,8 @@ export function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-950 text-white p-4 lg:p-6">
       <div className="max-w-7xl mx-auto grid grid-cols-12 gap-4 lg:gap-6">
+
+        <GuestNotice />
 
         {/* ═══ Fila superior ═══ */}
 

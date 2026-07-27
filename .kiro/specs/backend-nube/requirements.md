@@ -27,12 +27,12 @@ La nube es un complemento opcional: la aplicación funciona entera sin backend y
 
 #### Criterios de Aceptación
 
-1. THE Sistema_Auth SHALL configurar `defineAuth` de Amplify Gen 2 con login por email y contraseña como método de autenticación principal.
+1. THE Sistema_Auth SHALL configurar `defineAuth` de Amplify Gen 2 con login por email y contraseña como método de autenticación principal. **(SUSTITUIDO por identidad-nick)**
 2. THE Sistema_Auth SHALL habilitar el acceso de invitado (identidad no autenticada de Cognito) para permitir el uso de la aplicación sin registro.
-3. WHEN un usuario inicia sesión con email y contraseña válidos, THE Sistema_Auth SHALL devolver credenciales que permitan crear, leer y actualizar registros Checkpoint propios en Sistema_Data, y leer registros TeamEntry de cualquier equipo.
-4. WHEN un usuario accede como invitado, THE Sistema_Auth SHALL conceder credenciales con permiso exclusivamente de lectura sobre los registros TeamEntry en Sistema_Data, sin permiso de escritura ni lectura sobre registros Checkpoint.
-5. IF el inicio de sesión con email falla por credenciales incorrectas o usuario inexistente, THEN THE Sistema_Auth SHALL denegar el acceso, no emitir credenciales, y devolver un error que indique el motivo del fallo de autenticación.
-6. WHEN un usuario autenticado intenta crear o actualizar un registro Checkpoint, THE Sistema_Auth SHALL permitir la operación únicamente si el owner del registro coincide con la identidad del usuario autenticado.
+3. WHEN un usuario inicia sesión con email y contraseña válidos, THE Sistema_Auth SHALL devolver credenciales que permitan crear, leer y actualizar registros Checkpoint propios en Sistema_Data, y leer registros TeamEntry de cualquier equipo. **(SUSTITUIDO por identidad-nick)**
+4. WHEN un usuario accede como invitado, THE Sistema_Auth SHALL conceder credenciales con permiso exclusivamente de lectura sobre los registros TeamEntry en Sistema_Data, sin permiso de escritura ni lectura sobre registros Checkpoint. **(SUSTITUIDO por identidad-nick)**
+5. IF el inicio de sesión con email falla por credenciales incorrectas o usuario inexistente, THEN THE Sistema_Auth SHALL denegar el acceso, no emitir credenciales, y devolver un error que indique el motivo del fallo de autenticación. **(SUSTITUIDO por identidad-nick)**
+6. WHEN un usuario autenticado intenta crear o actualizar un registro Checkpoint, THE Sistema_Auth SHALL permitir la operación únicamente si el owner del registro coincide con la identidad del usuario autenticado. **(SUSTITUIDO por identidad-nick)**
 
 ### Requisito 2: Modelo DailyRecord
 
@@ -41,10 +41,10 @@ La nube es un complemento opcional: la aplicación funciona entera sin backend y
 #### Criterios de Aceptación
 
 1. THE Sistema_Data SHALL definir el modelo DailyRecord con los campos: date (tipo date, formato YYYY-MM-DD, requerido), goodPostureSeconds (tipo integer, rango 0–86400, requerido), longestFlowStreak (tipo integer, valor en minutos, rango 0–1440), avgScore (tipo integer, rango 0–100), level (tipo integer, mínimo 1), xp (tipo integer, mínimo 0) y teamCode (tipo string, longitud máxima 20 caracteres, opcional).
-2. THE Sistema_Data SHALL configurar la autorización de DailyRecord con `allow.owner()` para operaciones de creación, actualización y borrado, de modo que cada registro quede vinculado al usuario autenticado de Cognito que lo creó.
-3. THE Sistema_Data SHALL configurar la autorización de DailyRecord con `allow.authenticated().to(['read'])` para permitir que cualquier usuario autenticado pueda leer registros de otros usuarios (necesario para consultar el ranking por equipo).
+2. THE Sistema_Data SHALL configurar la autorización de DailyRecord con `allow.owner()` para operaciones de creación, actualización y borrado, de modo que cada registro quede vinculado al usuario autenticado de Cognito que lo creó. **(SUSTITUIDO por identidad-nick)**
+3. THE Sistema_Data SHALL configurar la autorización de DailyRecord con `allow.authenticated().to(['read'])` para permitir que cualquier usuario autenticado pueda leer registros de otros usuarios (necesario para consultar el ranking por equipo). **(SUSTITUIDO por identidad-nick)**
 4. THE Sistema_Data SHALL definir un índice secundario en DailyRecord con partition key `teamCode` y sort key `date` para permitir consultas de ranking filtradas por equipo y ordenadas por fecha.
-5. IF un usuario sincroniza un Checkpoint para una fecha que ya tiene un registro DailyRecord existente del mismo owner, THEN THE Sistema_Data SHALL sobrescribir (upsert) el registro existente en lugar de crear un duplicado.
+5. IF un usuario sincroniza un Checkpoint para una fecha que ya tiene un registro DailyRecord existente del mismo owner, THEN THE Sistema_Data SHALL sobrescribir (upsert) el registro existente en lugar de crear un duplicado. **(SUSTITUIDO por identidad-nick)**
 
 ### Requisito 3: Modelo Streak
 
@@ -52,11 +52,11 @@ La nube es un complemento opcional: la aplicación funciona entera sin backend y
 
 #### Criterios de Aceptación
 
-1. THE Sistema_Data SHALL definir el modelo Streak con los campos: currentDays (tipo integer, requerido, valor por defecto 0, rango 0 a 365), bestDays (tipo integer, requerido, valor por defecto 0, rango 0 a 365) y lastActiveDate (tipo string en formato ISO 8601 YYYY-MM-DD, requerido).
-2. THE Sistema_Data SHALL configurar la autorización de Streak exclusivamente con `allow.owner()` para todas las operaciones (create, read, update, delete).
-3. WHEN un usuario autenticado no posee un registro Streak, THE Sistema_Data SHALL crear uno con currentDays igual a 0, bestDays igual a 0 y lastActiveDate igual a la fecha actual en formato YYYY-MM-DD.
-4. WHEN el sistema sincroniza y lastActiveDate es igual a la fecha de ayer, THE Sistema_Data SHALL incrementar currentDays en 1 y actualizar lastActiveDate a la fecha actual; IF currentDays supera bestDays, THEN THE Sistema_Data SHALL actualizar bestDays al valor de currentDays.
-5. IF el sistema sincroniza y lastActiveDate es anterior a la fecha de ayer, THEN THE Sistema_Data SHALL restablecer currentDays a 1 y actualizar lastActiveDate a la fecha actual, preservando el valor de bestDays.
+1. THE Sistema_Data SHALL definir el modelo Streak con los campos: currentDays (tipo integer, requerido, valor por defecto 0, rango 0 a 365), bestDays (tipo integer, requerido, valor por defecto 0, rango 0 a 365) y lastActiveDate (tipo string en formato ISO 8601 YYYY-MM-DD, requerido). **(SUSPENDIDO por identidad-nick)**
+2. THE Sistema_Data SHALL configurar la autorización de Streak exclusivamente con `allow.owner()` para todas las operaciones (create, read, update, delete). **(SUSPENDIDO por identidad-nick)**
+3. WHEN un usuario autenticado no posee un registro Streak, THE Sistema_Data SHALL crear uno con currentDays igual a 0, bestDays igual a 0 y lastActiveDate igual a la fecha actual en formato YYYY-MM-DD. **(SUSPENDIDO por identidad-nick)**
+4. WHEN el sistema sincroniza y lastActiveDate es igual a la fecha de ayer, THE Sistema_Data SHALL incrementar currentDays en 1 y actualizar lastActiveDate a la fecha actual; IF currentDays supera bestDays, THEN THE Sistema_Data SHALL actualizar bestDays al valor de currentDays. **(SUSPENDIDO por identidad-nick)**
+5. IF el sistema sincroniza y lastActiveDate es anterior a la fecha de ayer, THEN THE Sistema_Data SHALL restablecer currentDays a 1 y actualizar lastActiveDate a la fecha actual, preservando el valor de bestDays. **(SUSPENDIDO por identidad-nick)**
 
 ### Requisito 4: Sincronización periódica de Checkpoint
 
@@ -64,12 +64,12 @@ La nube es un complemento opcional: la aplicación funciona entera sin backend y
 
 #### Criterios de Aceptación
 
-1. WHILE el usuario tiene sesión autenticada en Cognito y `navigator.onLine` es `true`, THE Sincronizador SHALL enviar un Checkpoint al Sistema_Data cada 300 segundos (±5 segundos de tolerancia del timer).
+1. WHILE el usuario tiene sesión autenticada en Cognito y `navigator.onLine` es `true`, THE Sincronizador SHALL enviar un Checkpoint al Sistema_Data cada 300 segundos (±5 segundos de tolerancia del timer). **(SUSTITUIDO por identidad-nick)**
 2. WHEN llega el momento de sincronizar, THE Sincronizador SHALL construir un objeto Checkpoint agregando los datos del día actual (fecha en formato YYYY-MM-DD) desde IndexedDB_Local: sumar `goodSeconds` de todas las entradas del día para `goodPostureSeconds`, calcular la media aritmética de `avgScore` de las entradas para `avgScore`, y tomar `level`, `xp` y `longestFlowStreak` del perfil almacenado.
 3. IF un envío de Checkpoint falla, THEN THE Sincronizador SHALL reintentar con backoff exponencial (base 1 segundo, factor ×2: 1 s, 2 s, 4 s) hasta un máximo de 3 intentos, preservando el Checkpoint en memoria hasta que se confirme el envío o se agoten los reintentos.
 4. WHEN los 3 reintentos se agotan sin éxito, THE Sincronizador SHALL descartar el intento actual sin eliminar los datos de IndexedDB_Local y esperar al próximo ciclo de 300 segundos para generar y enviar un nuevo Checkpoint.
 5. THE Sincronizador SHALL enviar exclusivamente campos del tipo `Checkpoint` definido en `src/contracts/sync.ts`: date (string YYYY-MM-DD), goodPostureSeconds (number), longestFlowStreak (number), avgScore (number 0-100), level (number), xp (number) y teamCode (string opcional).
-6. WHEN `navigator.onLine` cambia de `false` a `true` mientras el usuario tiene sesión autenticada, THE Sincronizador SHALL ejecutar un envío de Checkpoint inmediato sin esperar al próximo ciclo de 300 segundos.
+6. WHEN `navigator.onLine` cambia de `false` a `true` mientras el usuario tiene sesión autenticada, THE Sincronizador SHALL ejecutar un envío de Checkpoint inmediato sin esperar al próximo ciclo de 300 segundos. **(SUSTITUIDO por identidad-nick)**
 
 ### Requisito 5: Validación anti-trampa en el servidor
 
@@ -77,11 +77,11 @@ La nube es un complemento opcional: la aplicación funciona entera sin backend y
 
 #### Criterios de Aceptación
 
-1. WHEN el Sistema_Data recibe una mutación de actualización de DailyRecord que incluye un valor de goodPostureSeconds, THE Validador_AntiTrampa SHALL calcular el incremento comparando el nuevo valor con el valor de goodPostureSeconds almacenado en el registro existente para la misma fecha y usuario.
-2. IF el incremento de goodPostureSeconds supera los segundos reales transcurridos desde el campo updatedAt del registro anterior más un margen del 10%, THEN THE Validador_AntiTrampa SHALL rechazar la mutación con un mensaje de error que indique que el incremento excede el tiempo transcurrido permitido.
-3. IF no existe un registro previo de DailyRecord para la misma fecha y usuario (primera escritura del día), THEN THE Validador_AntiTrampa SHALL aceptar la mutación siempre que el valor de goodPostureSeconds no supere 86 400.
-4. IF el valor de goodPostureSeconds en la mutación supera 86 400, THEN THE Validador_AntiTrampa SHALL rechazar la mutación independientemente del tiempo transcurrido, con un mensaje de error que indique que el valor excede el máximo diario permitido.
-5. THE Validador_AntiTrampa SHALL ejecutarse como pipeline resolver o función Lambda adjunta a la mutación de DailyRecord en Amplify Gen 2, de modo que la validación ocurra antes de que el dato se persista en DynamoDB.
+1. WHEN el Sistema_Data recibe una mutación de actualización de DailyRecord que incluye un valor de goodPostureSeconds, THE Validador_AntiTrampa SHALL calcular el incremento comparando el nuevo valor con el valor de goodPostureSeconds almacenado en el registro existente para la misma fecha y usuario. **(SUSTITUIDO por identidad-nick)**
+2. IF el incremento de goodPostureSeconds supera los segundos reales transcurridos desde el campo updatedAt del registro anterior más un margen del 10%, THEN THE Validador_AntiTrampa SHALL rechazar la mutación con un mensaje de error que indique que el incremento excede el tiempo transcurrido permitido. **(SUSTITUIDO por identidad-nick)**
+3. IF no existe un registro previo de DailyRecord para la misma fecha y usuario (primera escritura del día), THEN THE Validador_AntiTrampa SHALL aceptar la mutación siempre que el valor de goodPostureSeconds no supere 86 400. **(SUSTITUIDO por identidad-nick)**
+4. IF el valor de goodPostureSeconds en la mutación supera 86 400, THEN THE Validador_AntiTrampa SHALL rechazar la mutación independientemente del tiempo transcurrido, con un mensaje de error que indique que el valor excede el máximo diario permitido. **(SUSTITUIDO por identidad-nick)**
+5. THE Validador_AntiTrampa SHALL ejecutarse como pipeline resolver o función Lambda adjunta a la mutación de DailyRecord en Amplify Gen 2, de modo que la validación ocurra antes de que el dato se persista en DynamoDB. **(SUSTITUIDO por identidad-nick)**
 
 ### Requisito 6: Ranking por código de equipo
 

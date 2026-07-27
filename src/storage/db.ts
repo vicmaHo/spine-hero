@@ -26,6 +26,15 @@ export interface SyncRecord {
   recordId: string;        // id del DailyRecord en AppSync/DynamoDB
 }
 
+/**
+ * Almacen_Local_Identidad: nick activo y el id de su registro UserIdentity.
+ * Nunca contiene el Correo_Vinculado (Requisito 9 criterio 8).
+ */
+export interface LocalIdentityRecord {
+  nick: string;            // tal como está almacenado en UserIdentity
+  userIdentityId: string;  // id inmutable del registro remoto
+}
+
 export interface SpineHeroDB extends DBSchema {
   minutes: {
     key: [string, number]; // [date YYYY-MM-DD, minuteOfDay 0-1439]
@@ -39,10 +48,14 @@ export interface SpineHeroDB extends DBSchema {
     key: string;           // date YYYY-MM-DD
     value: SyncRecord;
   };
+  identity: {
+    key: string;            // 'current'
+    value: LocalIdentityRecord;
+  };
 }
 
 const DB_NAME = 'spinehero';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export function openSpineHeroDB(): Promise<IDBPDatabase<SpineHeroDB>> {
   return openDB<SpineHeroDB>(DB_NAME, DB_VERSION, {
@@ -55,6 +68,11 @@ export function openSpineHeroDB(): Promise<IDBPDatabase<SpineHeroDB>> {
       // v2: store de metadatos de sincronización (id del DailyRecord por día).
       if (oldVersion < 2) {
         db.createObjectStore('sync', { keyPath: 'date' });
+      }
+      // v3: Almacen_Local_Identidad. Solo crea el store nuevo: minutes,
+      // profile y sync quedan intactos (Requisitos 5.4 y 12.7).
+      if (oldVersion < 3) {
+        db.createObjectStore('identity');
       }
     },
   });
@@ -110,4 +128,23 @@ export async function getSyncedRecordId(date: string): Promise<string | null> {
 export async function setSyncedRecordId(date: string, recordId: string): Promise<void> {
   const db = await getDB();
   await db.put('sync', { date, recordId });
+}
+
+/** Lee el Almacen_Local_Identidad. Devuelve null si no existe. */
+export async function getLocalIdentityRecord(): Promise<LocalIdentityRecord | null> {
+  const db = await getDB();
+  const record = await db.get('identity', 'current');
+  return record ?? null;
+}
+
+/** Guarda (o sobreescribe) el Almacen_Local_Identidad completo. */
+export async function saveLocalIdentityRecord(record: LocalIdentityRecord): Promise<void> {
+  const db = await getDB();
+  await db.put('identity', record, 'current');
+}
+
+/** Elimina el Almacen_Local_Identidad («Cambiar de usuario»). */
+export async function clearLocalIdentityRecord(): Promise<void> {
+  const db = await getDB();
+  await db.delete('identity', 'current');
 }

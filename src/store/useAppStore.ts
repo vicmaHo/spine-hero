@@ -14,8 +14,21 @@ import { startMinuteWriter } from '../storage/minuteWriter';
 import type { MinuteWriter } from '../storage/minuteWriter';
 import { createSynchronizer } from '../storage/synchronizer';
 import type { Synchronizer } from '../storage/synchronizer';
+import { loadLocalIdentity, clearLocalIdentity } from '../storage/identityLocal';
+import { createIdentityService } from '../storage/identityService';
+import { createRealIdentityClient, ensureGuestSession } from '../storage/identityClient';
+import type { ActiveIdentity, IdentityError } from '../storage/identityErrors';
+import { identityErrorMessage } from './identityMessages';
 
 type SourceType = 'real' | 'mock';
+
+// Plazo máximo de la lectura del Almacen_Local_Identidad al arrancar
+// (Requisito 4 criterio 7): si no resuelve en este tiempo, se presenta el
+// Formulario_Acceso sin borrar el contenido local.
+const IDENTITY_BOOTSTRAP_TIMEOUT_MS = 3_000;
+
+export type IdentityPhase = 'loading' | 'form' | 'granted' | 'guest';
+export type NickFormMode = 'signIn' | 'signUp';
 
 interface PerfStats {
   p50: number;
@@ -32,11 +45,19 @@ interface AppState {
   perf: PerfStats;
   isRunning: boolean;
   lastError: PostureError | null;
-  isAuthenticated: boolean;
   teamCode: string | null;
   videoStream: MediaStream | null;      // stream de la cámara en modo real (para preview)
   calibrationError: string | null;      // mensaje si la calibración falla
   latestLandmarks: Landmark[];          // últimos landmarks (modo real) para el overlay
+
+  // --- Slice de identidad (Sistema_Identidad) ---
+  identity: ActiveIdentity | null;      // único campo con el Nick activo (Req 4.3)
+  identityPhase: IdentityPhase;
+  identityBusy: boolean;                // «Comprobando…» (Req 8.3)
+  identityMessage: string | null;       // ya traducido a español
+  identityMessageField: 'nick' | 'email' | null;
+  emailTakenNick: string | null;        // habilita «Entrar con ese nick» (Req 3.3)
+  localSaveFailed: boolean;             // aviso no bloqueante (Req 4.8)
 
   // --- Acciones ---
   setSource: (type: SourceType) => void;
@@ -45,9 +66,15 @@ interface AppState {
   stop: () => void;
   calibrate: () => Promise<void>;
   pushFrame: (frame: PostureFrame) => void;
-  onAuthReady: () => void;
-  onAuthLost: () => void;
   syncNow: () => Promise<void>;
+
+  bootstrapIdentity: () => Promise<void>;
+  signUpNick: (nick: string, email: string) => Promise<void>;
+  signInNick: (nick: string) => Promise<void>;
+  changeNick: (nick: string) => Promise<void>;
+  switchUser: () => Promise<void>;      // «Cambiar de usuario»
+  continueWithoutNick: () => void;
+  openNickForm: () => void;             // «Elegir nick»
 }
 
 // --- Internal (fuera del estado expuesto para no serializar) ---
@@ -56,6 +83,33 @@ let _minuteWriter: MinuteWriter | null = null;
 let _synchronizer: Synchronizer | null = null;
 let _sourceInstance: { start(): Promise<void>; stop(): void; calibrate(): Promise<CalibrationBaseline>; subscribe(fn: (f: PostureFrame) => void): () => void } | null = null;
 let _landmarksUnsub: (() => void) | null = null;
+
+/**
+ * Traduce un `IdentityError` a su mensaje en español y, si es un fallo opaco
+ * para el usuario, deja su causa en la consola.
+ *
+ * `BACKEND` y `TIMEOUT` comparten un único mensaje genérico (Req 8.7), así que
+ * sin esta traza el `detail` —el error real de AppSync— se pierde y el fallo es
+ * indepurable desde el navegador.
+ */
+function identityMessageWithTrace(error: IdentityError) {
+  if (error.kind === 'BACKEND') console.error('[identity] fallo de backend:', error.detail);
+  if (error.kind === 'TIMEOUT') console.error('[identity] se agotó el plazo de la operación');
+  return identityErrorMessage(error);
+}
+
+/**
+ * Arranca (o reinicia) el Sincronizador con la identidad activa del store.
+ * `getIdentity` lee el estado en vivo, así que no hace falta reiniciarlo
+ * cuando `changeNick` actualiza `identity`: la próxima sincronización ya lo
+ * recoge sin volver a llamar a esta función.
+ */
+function startSynchronizerForIdentity(): void {
+  _synchronizer?.stop();
+  _synchronizer = createSynchronizer({ getIdentity: () => useAppStore.getState().identity });
+  _synchronizer.start();
+  void _synchronizer.syncNow(); // checkpoint inmediato (Req 7.5: ≤10 s desde la concesión)
+}
 
 // Tracking para cálculo de perf
 let _frameTimes: number[] = [];
@@ -89,11 +143,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   perf: { p50: 0, p95: 0, fps: 0 },
   isRunning: false,
   lastError: null,
-  isAuthenticated: false,
   teamCode: null,
   videoStream: null,
   calibrationError: null,
   latestLandmarks: [],
+
+  identity: null,
+  identityPhase: 'loading',
+  identityBusy: false,
+  identityMessage: null,
+  identityMessageField: null,
+  emailTakenNick: null,
+  localSaveFailed: false,
 
   // --- Acciones ---
 
@@ -250,21 +311,168 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  onAuthReady: () => {
-    _synchronizer = createSynchronizer();
-    _synchronizer.start();
-    set({ isAuthenticated: true });
-  },
-
-  onAuthLost: () => {
-    _synchronizer?.stop();
-    _synchronizer = null;
-    set({ isAuthenticated: false });
-  },
-
   // Fuerza un checkpoint inmediato (para verificación/manual; el automático es cada 5 min).
   syncNow: async () => {
     await _synchronizer?.syncNow();
+  },
+
+  // --- Slice de identidad ---
+
+  bootstrapIdentity: async () => {
+    set({ identityPhase: 'loading' });
+
+    // Antes de cualquier operación contra el Sistema_Data: un navegador que usó
+    // el login de Cognito retirado en Req 14.7 seguiría presentando
+    // credenciales del rol autenticado, que los modelos de identidad no
+    // autorizan. Se hace aquí y no en `main.tsx` porque este es el único camino
+    // por el que se llega al Formulario_Acceso, así que ningún envío puede
+    // adelantarse a la limpieza.
+    await ensureGuestSession();
+
+    let result;
+    try {
+      result = await Promise.race([
+        loadLocalIdentity(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('IDENTITY_BOOTSTRAP_TIMEOUT')), IDENTITY_BOOTSTRAP_TIMEOUT_MS),
+        ),
+      ]);
+    } catch {
+      // Fallo o plazo agotado (Req 4.7): mostrar el formulario sin borrar
+      // el contenido del Almacen_Local_Identidad.
+      set({ identityPhase: 'form' });
+      return;
+    }
+
+    if (result.ok && result.value !== null) {
+      set({ identity: result.value, identityPhase: 'granted' });
+      startSynchronizerForIdentity();
+      return;
+    }
+
+    // Sin nick guardado (result.ok con value null) o lectura fallida
+    // (result.ok === false): en ambos casos se pasa al formulario sin tocar
+    // el Almacen_Local_Identidad (Req 4.7).
+    set({ identityPhase: 'form' });
+  },
+
+  signUpNick: async (nick: string, email: string) => {
+    set({ identityBusy: true, identityMessage: null, identityMessageField: null, emailTakenNick: null });
+
+    const result = await createIdentityService(createRealIdentityClient()).signUp(nick, email);
+
+    if (result.ok) {
+      // El servicio ya intentó guardar localmente; se verifica de forma
+      // independiente porque `signUp` no expone si esa escritura tuvo éxito
+      // (Req 4.8: no revoca el acceso, solo se avisa).
+      const localCheck = await loadLocalIdentity();
+      const localSaveFailed = !(localCheck.ok && localCheck.value?.userIdentityId === result.value.userIdentityId);
+
+      set({
+        identity: result.value,
+        identityPhase: 'granted',
+        identityBusy: false,
+        identityMessage: null,
+        identityMessageField: null,
+        emailTakenNick: null,
+        localSaveFailed,
+      });
+      startSynchronizerForIdentity();
+      return;
+    }
+
+    const message = identityMessageWithTrace(result.error);
+    set({
+      identityBusy: false,
+      identityMessage: message.text,
+      identityMessageField: message.field,
+      emailTakenNick: result.error.kind === 'EMAIL_TAKEN' ? result.error.nick : null,
+    });
+  },
+
+  signInNick: async (nick: string) => {
+    set({ identityBusy: true, identityMessage: null, identityMessageField: null });
+
+    const result = await createIdentityService(createRealIdentityClient()).signIn(nick);
+
+    if (result.ok) {
+      const localCheck = await loadLocalIdentity();
+      const localSaveFailed = !(localCheck.ok && localCheck.value?.userIdentityId === result.value.userIdentityId);
+
+      set({
+        identity: result.value,
+        identityPhase: 'granted',
+        identityBusy: false,
+        identityMessage: null,
+        identityMessageField: null,
+        localSaveFailed,
+      });
+      startSynchronizerForIdentity();
+      return;
+    }
+
+    const message = identityMessageWithTrace(result.error);
+    set({
+      identityBusy: false,
+      identityMessage: message.text,
+      identityMessageField: message.field,
+    });
+  },
+
+  changeNick: async (nick: string) => {
+    const current = get().identity;
+    if (current === null) return; // defensivo: no debería invocarse sin identidad activa
+
+    set({ identityBusy: true, identityMessage: null, identityMessageField: null });
+
+    const result = await createIdentityService(createRealIdentityClient()).changeNick(current, nick);
+
+    if (result.ok) {
+      const localCheck = await loadLocalIdentity();
+      const localSaveFailed = !(localCheck.ok && localCheck.value?.userIdentityId === result.value.userIdentityId);
+
+      // No toca `game`, `calibration` ni `teamCode` (Req 5.4): solo se
+      // actualiza la identidad y los campos de mensaje.
+      set({
+        identity: result.value,
+        identityBusy: false,
+        identityMessage: null,
+        identityMessageField: null,
+        localSaveFailed,
+      });
+      return;
+    }
+
+    // El nick anterior permanece como identidad activa (Req 5.7): no se
+    // toca `identity`, solo se reporta el fallo.
+    const message = identityMessageWithTrace(result.error);
+    set({
+      identityBusy: false,
+      identityMessage: message.text,
+      identityMessageField: message.field,
+    });
+  },
+
+  switchUser: async () => {
+    await clearLocalIdentity();
+    _synchronizer?.stop();
+    _synchronizer = null;
+    set({
+      identity: null,
+      identityPhase: 'form',
+      identityMessage: null,
+      identityMessageField: null,
+      emailTakenNick: null,
+      localSaveFailed: false,
+    });
+  },
+
+  continueWithoutNick: () => {
+    set({ identityPhase: 'guest' });
+  },
+
+  openNickForm: () => {
+    set({ identityPhase: 'form' });
   },
 }));
 

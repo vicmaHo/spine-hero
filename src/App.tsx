@@ -1,7 +1,12 @@
 import { Dashboard } from './ui/Dashboard';
+import { NickGate } from './ui/NickGate';
 
 function App() {
-  return <Dashboard />;
+  return (
+    <NickGate>
+      <Dashboard />
+    </NickGate>
+  );
 }
 
 export default App;

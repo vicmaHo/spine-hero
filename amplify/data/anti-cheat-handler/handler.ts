@@ -1,72 +1,49 @@
 /**
  * Handler Lambda para la custom mutation validateAndUpdateDailyRecord.
  *
- * Valida que el incremento de goodPostureSeconds no exceda el tiempo real
- * transcurrido (+10% margen). Si pasa, devuelve los datos para que el
- * resolver de AppSync complete la operación.
- *
- * El cliente envía los datos del registro previo (previousGoodPostureSeconds
- * y previousUpdatedAt) para que el handler valide sin acceder a DynamoDB.
- * Para la demo esto es suficiente. En producción se leería de la base.
+ * Reducido a veredicto y persistencia: delega en `handleValidatedUpdate`
+ * (decision.ts) la evaluación de las reglas puras de rules.ts y, si el
+ * veredicto acepta, la persistencia del DailyRecord (create sin `id`, update
+ * con `id`) usando el propio cliente de datos de Amplify desde la Lambda. Si
+ * el veredicto rechaza, `handleValidatedUpdate` lanza sin emitir ninguna
+ * escritura.
  */
 
+import { Amplify } from 'aws-amplify';
+import { generateClient } from 'aws-amplify/data';
+import { getAmplifyDataClientConfig } from '@aws-amplify/backend/function/runtime';
+import { env } from '$amplify/env/antiCheatValidator';
 import type { Schema } from '../resource';
+import { handleValidatedUpdate, type DailyRecordWriter } from './decision';
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
+export { ANTICHEAT_REJECT_TOKEN } from './decision';
 
-/**
- * Token con el que se prefijan los mensajes de rechazo. Es el contrato con el
- * cliente: solo si el mensaje lo lleva se trata como trampa real; cualquier
- * otro error (mutación no desplegada, permisos, red) es fallo de
- * infraestructura y no debe bloquear la sincronización.
- */
-export const ANTICHEAT_REJECT_TOKEN = 'ANTICHEAT_REJECT';
+// ─── Cliente de datos ─────────────────────────────────────────────────────────
 
-/** Margen de tolerancia (10%) */
-const TOLERANCE_FACTOR = 1.1;
+const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env);
+Amplify.configure(resourceConfig, libraryOptions);
 
-/** Máximo absoluto de segundos en un día */
-const MAX_DAILY_SECONDS = 86_400;
+const client = generateClient<Schema>();
+
+/** Adaptador de `DailyRecordWriter` sobre el cliente real de datos de Amplify. */
+const dailyRecordWriter: DailyRecordWriter = {
+  async create(fields) {
+    const { data, errors } = await client.models.DailyRecord.create(fields);
+    if (errors?.length || !data) {
+      throw new Error(`No se pudo crear el DailyRecord: ${errors?.[0]?.message ?? 'desconocido'}`);
+    }
+    return { id: data.id, date: data.date, goodPostureSeconds: data.goodPostureSeconds };
+  },
+  async update(id, fields) {
+    const { data, errors } = await client.models.DailyRecord.update({ id, ...fields });
+    if (errors?.length || !data) {
+      throw new Error(`No se pudo actualizar el DailyRecord: ${errors?.[0]?.message ?? 'desconocido'}`);
+    }
+    return { id: data.id, date: data.date, goodPostureSeconds: data.goodPostureSeconds };
+  },
+};
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
-export const handler: Schema['validateAndUpdateDailyRecord']['functionHandler'] = async (event) => {
-  const {
-    id,
-    date,
-    goodPostureSeconds,
-    previousGoodPostureSeconds,
-    previousUpdatedAt,
-  } = event.arguments;
-
-  // Regla 1: rechazar si excede el máximo diario absoluto
-  if (goodPostureSeconds > MAX_DAILY_SECONDS) {
-    throw new Error(
-      `${ANTICHEAT_REJECT_TOKEN}: goodPostureSeconds excede el máximo diario de 86400`
-    );
-  }
-
-  // Regla 2: si hay datos del registro previo, validar incremento vs tiempo
-  if (
-    previousGoodPostureSeconds !== undefined &&
-    previousGoodPostureSeconds !== null &&
-    previousUpdatedAt
-  ) {
-    const increment = goodPostureSeconds - previousGoodPostureSeconds;
-
-    if (increment > 0) {
-      const elapsedMs = Date.now() - new Date(previousUpdatedAt).getTime();
-      const elapsedSeconds = elapsedMs / 1000;
-      const maxAllowed = elapsedSeconds * TOLERANCE_FACTOR;
-
-      if (increment > maxAllowed) {
-        throw new Error(
-          `${ANTICHEAT_REJECT_TOKEN}: Incremento de ${increment}s excede los ${Math.floor(maxAllowed)}s permitidos (tiempo transcurrido × 1.1)`
-        );
-      }
-    }
-  }
-
-  // Validación pasó — devolver resultado
-  return { id, date, goodPostureSeconds };
-};
+export const handler: Schema['validateAndUpdateDailyRecord']['functionHandler'] = async (event) =>
+  handleValidatedUpdate(event.arguments, dailyRecordWriter, Date.now());

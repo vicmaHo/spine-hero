@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import type { PostureError } from '../contracts/posture';
+import { NickSettings } from './NickSettings';
 
 const ERROR_LABELS: Record<PostureError['kind'], string> = {
   CAMERA_DENIED: 'Cámara denegada',
@@ -99,6 +100,10 @@ export function ControlPanel() {
           Error: {ERROR_LABELS[lastError.kind]}
         </p>
       )}
+
+      <div className="border-t border-gray-700 pt-3">
+        <NickSettings />
+      </div>
     </div>
   );
 }
