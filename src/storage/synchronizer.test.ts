@@ -102,7 +102,11 @@ describe('synchronizer · upsert de DailyRecord vía la mutación validada', () 
 
     expect(h.validateMutationMock).toHaveBeenCalledOnce();
     expect(h.validateMutationMock.mock.calls[0][0]).toMatchObject({ id: undefined });
-    expect(h.setSyncedRecordIdMock).toHaveBeenCalledWith(expect.any(String), 'rec-1');
+    expect(h.setSyncedRecordIdMock).toHaveBeenCalledWith(
+      expect.any(String),
+      'rec-1',
+      activeIdentity.userIdentityId,
+    );
   });
 
   it('sync con id previo: llama a la mutación con ese id y no crea otro registro', async () => {
@@ -124,7 +128,11 @@ describe('synchronizer · upsert de DailyRecord vía la mutación validada', () 
     await sync.syncNow();
 
     expect(h.validateMutationMock).toHaveBeenCalledTimes(2);
-    expect(h.setSyncedRecordIdMock).toHaveBeenCalledWith(expect.any(String), 'rec-2');
+    expect(h.setSyncedRecordIdMock).toHaveBeenCalledWith(
+      expect.any(String),
+      'rec-2',
+      activeIdentity.userIdentityId,
+    );
   });
 
   it('la mutación lleva displayName igual al Nick activo tal cual está almacenado', async () => {
@@ -147,7 +155,11 @@ describe('synchronizer · validación anti-trampa', () => {
     await sync.syncNow();
 
     expect(h.validateMutationMock).toHaveBeenCalledOnce();
-    expect(h.setSyncedRecordIdMock).toHaveBeenCalledWith(expect.any(String), 'rec-1');
+    expect(h.setSyncedRecordIdMock).toHaveBeenCalledWith(
+      expect.any(String),
+      'rec-1',
+      activeIdentity.userIdentityId,
+    );
   });
 
   it('descarta el checkpoint sin reintentar si el servidor lo rechaza por trampa', async () => {
@@ -563,5 +575,76 @@ describe('synchronizer · Property 16 — clasificación del fallo (parte del cl
       // siguen leyéndose (y por tanto conservándose) durante los reintentos.
       expect(h.getDayMock).toHaveBeenCalled();
     }
+  });
+});
+
+describe('synchronizer · el recordId del día está acotado a la identidad', () => {
+  /**
+   * Emula la semántica real del store `sync` de IndexedDB: un único registro
+   * por fecha, con el id de la identidad que lo escribió, que solo se devuelve
+   * a esa misma identidad (`getSyncedRecordId`).
+   */
+  function installOwnedSyncStore(): void {
+    let stored: { recordId: string; userIdentityId: string } | null = null;
+
+    h.getSyncedRecordIdMock.mockImplementation(async (_date: string, owner: string) => {
+      if (stored === null) return null;
+      return stored.userIdentityId === owner ? stored.recordId : null;
+    });
+    h.setSyncedRecordIdMock.mockImplementation(
+      async (_date: string, recordId: string, userIdentityId: string) => {
+        stored = { recordId, userIdentityId };
+      },
+    );
+
+    let nextRow = 1;
+    h.validateMutationMock.mockImplementation(async (args: { id?: string }) => ({
+      data: {
+        id: args.id ?? `rec-${nextRow++}`,
+        date: today,
+        goodPostureSeconds: 100,
+      },
+      errors: undefined,
+    }));
+  }
+
+  it('tras cambiar de usuario, el nick nuevo crea su propia fila en vez de actualizar la ajena', async () => {
+    installOwnedSyncStore();
+
+    const primero: ActiveIdentity = { nick: 'ana', userIdentityId: 'uid-ana' };
+    const segundo: ActiveIdentity = { nick: 'bruno', userIdentityId: 'uid-bruno' };
+
+    await createSynchronizer({ getIdentity: () => primero }).syncNow();
+    await createSynchronizer({ getIdentity: () => segundo }).syncNow();
+
+    const [llamadaAna, llamadaBruno] = h.validateMutationMock.mock.calls.map((c) => c[0]);
+
+    // Ana crea (sin id) y se queda con rec-1.
+    expect(llamadaAna).toMatchObject({ id: undefined, displayName: 'ana' });
+    // Bruno NO reutiliza rec-1: si lo hiciera, la mutación haría un update y la
+    // fila de Ana pasaría a llamarse «bruno» con los segundos de Ana.
+    expect(llamadaBruno).toMatchObject({ id: undefined, displayName: 'bruno' });
+    expect(h.setSyncedRecordIdMock).toHaveBeenLastCalledWith(
+      expect.any(String),
+      'rec-2',
+      'uid-bruno',
+    );
+  });
+
+  it('la misma identidad sí reutiliza su recordId, incluso tras cambiar de nick', async () => {
+    installOwnedSyncStore();
+
+    // Mismo userIdentityId, nick distinto: es lo que deja un `changeNick`
+    // aceptado, y debe seguir actualizando la misma fila (Req 5.8, 7.6).
+    let identity: ActiveIdentity = { nick: 'ana', userIdentityId: 'uid-ana' };
+    const sync = createSynchronizer({ getIdentity: () => identity });
+
+    await sync.syncNow();
+    identity = { nick: 'ana2', userIdentityId: 'uid-ana' };
+    await sync.syncNow();
+
+    const [primera, segunda] = h.validateMutationMock.mock.calls.map((c) => c[0]);
+    expect(primera).toMatchObject({ id: undefined, displayName: 'ana' });
+    expect(segunda).toMatchObject({ id: 'rec-1', displayName: 'ana2' });
   });
 });

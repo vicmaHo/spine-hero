@@ -86,6 +86,44 @@ function toBackendError(err: unknown): IdentityError {
 }
 
 export function createIdentityService(client: IdentityDataClient): IdentityService {
+  /**
+   * Reserva `nickLower` para `identityId`. Devuelve `null` si queda reservado y
+   * un `IdentityError` si no se puede.
+   *
+   * La clave ocupada **no** implica que el nick esté en uso. `changeNick` crea
+   * la claim del nick nuevo y deja la anterior sin borrar (ninguna claim se
+   * borra nunca, decisión de diseño), así que un nick abandonado conserva su
+   * claim sin que ningún `UserIdentity` lo lleve. Sin esta comprobación ese nick
+   * quedaba inservible para todo el mundo y para siempre: «Ya tengo nick» decía
+   * «Ese nick no está registrado» (no hay identidad) y «Crear nick» decía «Ese
+   * nick ya está en uso» (la claim existe), sin salida por ninguna de las dos.
+   *
+   * La autoridad sobre «este nick lo lleva alguien» es el índice de
+   * `UserIdentity`; la claim es el cerrojo que resuelve la carrera entre dos
+   * altas simultáneas. Sigue haciendo ese trabajo para nicks nuevos, que es el
+   * caso habitual; el hueco de carrera que esto abre se limita a dos altas
+   * simultáneas que compitan por una claim ya huérfana. Es la misma recuperación
+   * que el alta ya hacía con la claim de correo.
+   */
+  async function reserveNick(
+    nickLower: string,
+    identityId: string,
+  ): Promise<IdentityError | null> {
+    const claim = await withTimeout(
+      client.createNickClaim(nickLower, identityId),
+      IDENTITY_TIMEOUT_MS,
+    );
+    if (claim.ok) return null;
+    if (claim.reason !== 'TAKEN') {
+      return { kind: 'BACKEND', detail: 'createNickClaim failed' };
+    }
+
+    const holder = await withTimeout(client.findByNickLower(nickLower), IDENTITY_TIMEOUT_MS);
+    if (holder === null) return null; // claim huérfana: el nick está libre
+    if (holder.userIdentityId === identityId) return null; // ya es mío
+    return { kind: 'NICK_TAKEN' };
+  }
+
   async function signUp(
     rawNick: string,
     rawEmail: string,
@@ -131,17 +169,8 @@ export function createIdentityService(client: IdentityDataClient): IdentityServi
         identityId = orphanClaim.identityId;
       }
 
-      const nickClaim = await withTimeout(
-        client.createNickClaim(nickLower, identityId),
-        IDENTITY_TIMEOUT_MS,
-      );
-
-      if (!nickClaim.ok) {
-        if (nickClaim.reason === 'TAKEN') {
-          return { ok: false, error: { kind: 'NICK_TAKEN' } };
-        }
-        return { ok: false, error: { kind: 'BACKEND', detail: 'createNickClaim failed' } };
-      }
+      const nickError = await reserveNick(nickLower, identityId);
+      if (nickError !== null) return { ok: false, error: nickError };
 
       const created = await withTimeout(
         client.createIdentity({ id: identityId, nick, nickLower, email }),
@@ -205,23 +234,13 @@ export function createIdentityService(client: IdentityDataClient): IdentityServi
 
     try {
       if (!capitalizationOnlyChange) {
-        // El nickLower cambia: hay que comprobar colisión con otra identidad
-        // antes de reclamar la claim (Req 5.6).
-        const existing = await withTimeout(client.findByNickLower(nickLower), IDENTITY_TIMEOUT_MS);
-        if (existing !== null && existing.userIdentityId !== current.userIdentityId) {
-          return { ok: false, error: { kind: 'NICK_TAKEN' } };
-        }
-
-        const nickClaim = await withTimeout(
-          client.createNickClaim(nickLower, current.userIdentityId),
-          IDENTITY_TIMEOUT_MS,
-        );
-        if (!nickClaim.ok) {
-          if (nickClaim.reason === 'TAKEN') {
-            return { ok: false, error: { kind: 'NICK_TAKEN' } };
-          }
-          return { ok: false, error: { kind: 'BACKEND', detail: 'createNickClaim failed' } };
-        }
+        // El nickLower cambia: `reserveNick` reclama la claim y solo devuelve
+        // NICK_TAKEN si otra identidad lleva ese nick de verdad (Req 5.6). Una
+        // claim huérfana —incluida la que dejó un cambio de nick anterior de
+        // esta misma persona— no bloquea: así se puede volver a un nick propio
+        // que se abandonó.
+        const nickError = await reserveNick(nickLower, current.userIdentityId);
+        if (nickError !== null) return { ok: false, error: nickError };
       }
       // Si solo cambia la capitalización, se salta la claim y se actualiza
       // directamente (Req 5.2). La claim antigua queda huérfana: ninguna

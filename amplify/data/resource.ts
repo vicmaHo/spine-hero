@@ -65,6 +65,12 @@ const schema = a.schema({
     })
     .secondaryIndexes((index) => [
       index('teamCode').sortKeys(['date']).queryField('listByTeamAndDate'),
+      // Índice nuevo: permite al Validador_AntiTrampa localizar la fila que ya
+      // existe para un (displayName, date) antes de crear otra. Sin él, la
+      // unicidad del Req 7.7 dependía de un puntero guardado en IndexedDB, que
+      // se pierde al borrar los datos del sitio o al entrar desde otro
+      // navegador, y el resultado eran varias filas del mismo nick el mismo día.
+      index('displayName').sortKeys(['date']).queryField('listByNameAndDate'),
     ])
     .authorization((allow) => [allow.guest().to(['create', 'read', 'update'])]),
 
@@ -105,7 +111,12 @@ const schema = a.schema({
   // La Lambda antiCheatValidator persiste el DailyRecord ella misma (create
   // sin id, update con id), así que necesita permiso para mutar contra la
   // propia API de AppSync desde su rol de ejecución.
-  .authorization((allow) => [allow.resource(antiCheatValidator).to(['mutate'])]);
+  //
+  // `query` además de `mutate`: la Lambda consulta `listByNameAndDate` para
+  // localizar la fila que ya existe de ese nick y ese día antes de crear otra
+  // (Req 7.7). Sin este verbo su rol solo alcanza `/types/Mutation/*` y la
+  // consulta responde «Not Authorized», lo que hacía fallar toda escritura.
+  .authorization((allow) => [allow.resource(antiCheatValidator).to(['mutate', 'query'])]);
 
 export type Schema = ClientSchema<typeof schema>;
 

@@ -41,6 +41,23 @@ const dailyRecordWriter: DailyRecordWriter = {
     }
     return { id: data.id, date: data.date, goodPostureSeconds: data.goodPostureSeconds };
   },
+  async findExisting(displayName, date) {
+    const { data, errors } = await client.models.DailyRecord.listByNameAndDate(
+      { displayName, date: { eq: date } },
+      {
+        selectionSet: ['id', 'goodPostureSeconds', 'longestFlowStreak', 'level', 'xp'] as const,
+        limit: 1,
+      },
+    );
+    // Se lanza en vez de devolver null: un fallo de la consulta con null haría
+    // crear una fila duplicada. El mensaje no lleva el token ANTICHEAT_REJECT,
+    // así que el Sincronizador lo trata como infraestructura y lo reintenta
+    // (Req 13.13).
+    if (errors?.length) {
+      throw new Error(`No se pudo buscar el DailyRecord del día: ${errors[0]?.message ?? 'desconocido'}`);
+    }
+    return data[0] ?? null;
+  },
 };
 
 // ─── Handler ──────────────────────────────────────────────────────────────────

@@ -47,9 +47,65 @@ export interface DailyRecordWriteResult {
  * lo implementa sobre `client.models.DailyRecord`; los tests, con un doble en
  * memoria (`fakeDailyRecordWriter`).
  */
+/** Lo que se necesita saber de una fila ya persistida para no empeorarla. */
+export interface ExistingDailyRecord {
+  id: string;
+  goodPostureSeconds: number;
+  longestFlowStreak?: number | null;
+  level?: number | null;
+  xp?: number | null;
+}
+
 export interface DailyRecordWriter {
   create(fields: DailyRecordFields): Promise<DailyRecordWriteResult>;
   update(id: string, fields: DailyRecordFields): Promise<DailyRecordWriteResult>;
+  /**
+   * Fila que ya existe para ese `displayName` y esa `date`, o null si no hay
+   * ninguna.
+   *
+   * Es lo que hace cumplir el Req 7.7 («como máximo un DailyRecord por
+   * combinación de Nick y fecha») del lado servidor, en vez de fiarlo al puntero
+   * que el cliente guarda en IndexedDB: ese puntero desaparece si se borran los
+   * datos del sitio, si se entra desde otro navegador o si el usuario cierra
+   * sesión, y cada pérdida creaba una fila más del mismo nick el mismo día.
+   */
+  findExisting(displayName: string, date: string): Promise<ExistingDailyRecord | null>;
+}
+
+/**
+ * Contadores del día que no pueden decrecer, con el valor ya persistido.
+ *
+ * Hace falta porque el cliente pierde sus minutos locales al cerrar sesión: al
+ * reentrar el mismo día cree de buena fe que lleva 0 segundos, y sin esta guarda
+ * el `update` machacaría con 17 los 289 segundos que la nube ya tenía. Los
+ * segundos de buena postura de un día solo crecen; el nivel y el XP son
+ * acumulados de por vida, así que tampoco bajan; `longestFlowStreak` es un
+ * máximo por definición.
+ *
+ * No abre ningún agujero anti-trampa: el valor que se conserva es uno que
+ * `validateWrite` ya aprobó cuando se escribió. `avgScore` queda fuera porque es
+ * una media, no un contador: ahí el valor recién medido es el correcto.
+ */
+function keepMonotonic(
+  fields: DailyRecordFields,
+  existing: ExistingDailyRecord,
+): DailyRecordFields {
+  const highest = (
+    incoming: number | null | undefined,
+    stored: number | null | undefined,
+  ): number | null | undefined => {
+    if (stored === null || stored === undefined) return incoming;
+    if (incoming === null || incoming === undefined) return stored;
+    return Math.max(incoming, stored);
+  };
+
+  return {
+    ...fields,
+    goodPostureSeconds: Math.max(fields.goodPostureSeconds, existing.goodPostureSeconds),
+    longestFlowStreak: highest(fields.longestFlowStreak, existing.longestFlowStreak),
+    level: highest(fields.level, existing.level),
+    xp: highest(fields.xp, existing.xp),
+  };
 }
 
 export interface ValidatedUpdateArgs {
@@ -119,8 +175,20 @@ export async function handleValidatedUpdate(
     teamCode,
   };
 
+  // El id que manda el cliente tiene prioridad: es el único caso en que la fila
+  // a actualizar puede tener un `displayName` distinto del que llega, que es lo
+  // que ocurre justo después de un cambio de nick (Req 5.8). La consulta va
+  // después del veredicto: una escritura rechazada no gasta una lectura.
   if (id) {
     return writer.update(id, fields);
+  }
+
+  // Sin id (primer envío del día, puntero local perdido, otro navegador) la
+  // verdad está en el servidor.
+  const existing = await writer.findExisting(displayName, date);
+
+  if (existing) {
+    return writer.update(existing.id, keepMonotonic(fields, existing));
   }
 
   return writer.create(fields);

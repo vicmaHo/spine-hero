@@ -107,9 +107,6 @@ export function createSynchronizer(
 
       const checkpoint: Checkpoint = buildCheckpoint(today, minutes, profile, profile.teamCode);
 
-      // El Nick activo tal como está almacenado, sin recortes ni normalización (Req 7.1)
-      const displayName = identity.nick;
-
       // `authMode` explícito: sin sesión de Cognito, las Credenciales_Invitado
       // son las únicas con las que el Sincronizador puede escribir (Req 13.2).
       const client = generateClient<Schema>({ authMode: 'identityPool' });
@@ -118,7 +115,7 @@ export function createSynchronizer(
       // los mismos números volverían a rechazarse (Req 13.13).
       for (let attempt = 0; attempt < cfg.maxRetries; attempt++) {
         try {
-          await upsertDailyRecord(client, today, checkpoint, displayName);
+          await upsertDailyRecord(client, today, checkpoint, identity);
           return;
         } catch (err) {
           const message = err instanceof Error ? err.message : '';
@@ -148,9 +145,13 @@ export function createSynchronizer(
     client: DataClient,
     today: string,
     checkpoint: Checkpoint,
-    displayName: string,
+    identity: ActiveIdentity,
   ): Promise<void> {
-    const existingId = await getSyncedRecordId(today);
+    // El Nick activo tal como está almacenado, sin recortes ni normalización (Req 7.1)
+    const displayName = identity.nick;
+    // Acotado a la identidad activa: un recordId de otro nick no se reutiliza,
+    // así el `update` nunca cae sobre la fila del ranking de otra persona.
+    const existingId = await getSyncedRecordId(today, identity.userIdentityId);
 
     // Si hay un registro previo sincronizado, se envían también sus valores
     // previos para que el Validador_AntiTrampa pueda evaluar INCREMENT_VS_ELAPSED.
@@ -190,7 +191,7 @@ export function createSynchronizer(
       throw new Error('validateAndUpdateDailyRecord falló');
     }
 
-    await setSyncedRecordId(today, data.id);
+    await setSyncedRecordId(today, data.id, identity.userIdentityId);
   }
 
   function start(): void {

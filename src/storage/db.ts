@@ -24,6 +24,19 @@ export interface ProfileRecord {
 export interface SyncRecord {
   date: string;            // YYYY-MM-DD (keyPath)
   recordId: string;        // id del DailyRecord en AppSync/DynamoDB
+  /**
+   * id del UserIdentity dueño de ese DailyRecord.
+   *
+   * Sin él, el mapa fecha → recordId es común a todas las identidades del
+   * navegador: tras «Cambiar de usuario», el Sincronizador del nick nuevo
+   * reutilizaría el recordId del anterior y la mutación haría un `update` con
+   * el `displayName` nuevo, renombrando la fila del ranking del nick anterior y
+   * quedándose con sus segundos.
+   *
+   * Opcional porque los registros escritos antes de este campo no lo tienen; se
+   * aceptan como propios (entonces solo había una identidad por navegador).
+   */
+  userIdentityId?: string;
 }
 
 /**
@@ -115,19 +128,32 @@ export async function saveProfile(profile: ProfileRecord): Promise<void> {
 }
 
 /**
- * Devuelve el id del DailyRecord ya sincronizado para `date`, o null si aún
- * no se ha creado ninguno ese día (primer sync → toca create).
+ * Devuelve el id del DailyRecord que `userIdentityId` ya sincronizó para
+ * `date`, o null si aún no hay ninguno suyo ese día (primer sync → toca
+ * create).
+ *
+ * Devolver null cuando el registro guardado pertenece a otra identidad es lo
+ * que impide que un nick escriba sobre la fila de otro (ver `SyncRecord`).
  */
-export async function getSyncedRecordId(date: string): Promise<string | null> {
+export async function getSyncedRecordId(
+  date: string,
+  userIdentityId: string,
+): Promise<string | null> {
   const db = await getDB();
   const rec = await db.get('sync', date);
-  return rec?.recordId ?? null;
+  if (!rec) return null;
+  if (rec.userIdentityId !== undefined && rec.userIdentityId !== userIdentityId) return null;
+  return rec.recordId;
 }
 
-/** Registra el id del DailyRecord creado para `date` (para futuros updates). */
-export async function setSyncedRecordId(date: string, recordId: string): Promise<void> {
+/** Registra el id del DailyRecord creado para `date` por `userIdentityId`. */
+export async function setSyncedRecordId(
+  date: string,
+  recordId: string,
+  userIdentityId: string,
+): Promise<void> {
   const db = await getDB();
-  await db.put('sync', { date, recordId });
+  await db.put('sync', { date, recordId, userIdentityId });
 }
 
 /** Lee el Almacen_Local_Identidad. Devuelve null si no existe. */
@@ -147,4 +173,36 @@ export async function saveLocalIdentityRecord(record: LocalIdentityRecord): Prom
 export async function clearLocalIdentityRecord(): Promise<void> {
   const db = await getDB();
   await db.delete('identity', 'current');
+}
+
+/**
+ * Vacía los datos locales del usuario en el cierre de sesión: identidad,
+ * minutos del día y perfil (GameState, calibración y teamCode).
+ *
+ * Deja el navegador como recién instalado para que la siguiente persona no
+ * herede XP, nivel, racha, minutos ni —sobre todo— una calibración hecha con
+ * otro cuerpo. No toca el registro `UserIdentity` remoto, así que el nick que
+ * cerró sesión vuelve a entrar con «Ya tengo nick» (Req 4.5).
+ *
+ * **`sync` se conserva a propósito.** No es progreso: es el puntero
+ * fecha → id del DailyRecord ya creado en la nube. Borrarlo hacía que el mismo
+ * nick, al reentrar el mismo día, no encontrara su fila y creara otra, dejando
+ * varias filas suyas en el ranking e incumpliendo el Req 7.7. El puntero lleva
+ * el `userIdentityId` de su dueño (ver `SyncRecord`), así que conservarlo no
+ * filtra nada a la siguiente persona: a otra identidad `getSyncedRecordId` le
+ * devuelve null igualmente.
+ *
+ * Los tres `clear()` van en una única transacción: o se borra todo o no se
+ * borra nada, sin estados intermedios en los que la identidad esté fuera pero
+ * el progreso siga dentro.
+ */
+export async function clearAllLocalUserData(): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(['identity', 'minutes', 'profile'], 'readwrite');
+  await Promise.all([
+    tx.objectStore('identity').clear(),
+    tx.objectStore('minutes').clear(),
+    tx.objectStore('profile').clear(),
+    tx.done,
+  ]);
 }

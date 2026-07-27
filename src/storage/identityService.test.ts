@@ -348,10 +348,19 @@ describe('Property 5 (reclamo huérfano): un alta posterior reutiliza la EmailCl
     const rng = createRng(DEFAULT_SEED + 303);
     const takenNickLower = toNickLower(genBaseNickLetters(rng));
 
-    // Simula que otra alta concurrente ya reclamó este nickLower: se llama
-    // directamente sobre el doble, sin pasar por el servicio.
+    // Simula que otra alta concurrente ya se quedó con este nickLower: se llama
+    // directamente sobre el doble, sin pasar por el servicio. Hacen falta las
+    // dos piezas —la claim y el UserIdentity que la lleva—, porque la autoridad
+    // sobre «este nick está ocupado» es el índice de UserIdentity: una claim sin
+    // identidad es una claim huérfana y el nick se considera libre.
     const preseed = await client.createNickClaim(takenNickLower, 'someone-else-id');
     expect(preseed.ok).toBe(true);
+    await client.createIdentity({
+      id: 'someone-else-id',
+      nick: takenNickLower,
+      nickLower: takenNickLower,
+      email: 'ocupante@ejemplo.com',
+    });
 
     const email = genValidEmailBase(rng);
 
@@ -386,7 +395,10 @@ describe('Property 5 (reclamo huérfano): un alta posterior reutiliza la EmailCl
     // primera vez: la EmailClaim huérfana se reaprovecha, no se duplica.
     expect(secondResult.value.userIdentityId).toBe(orphanedIdentityId);
 
-    const createIdentityCall = client.getTrace().find((entry) => entry.op === 'createIdentity');
+    // La primera entrada `createIdentity` de la traza es el ocupante que se
+    // sembró a mano arriba; la del servicio es la última.
+    const createIdentityCalls = client.getTrace().filter((entry) => entry.op === 'createIdentity');
+    const createIdentityCall = createIdentityCalls[createIdentityCalls.length - 1];
     expect(createIdentityCall).toBeDefined();
     const createdInput = createIdentityCall?.args[0] as { id: string };
     expect(createdInput.id).toBe(orphanedIdentityId);
@@ -474,6 +486,12 @@ describe('Property 7: ningún fallo de identidad deja rastro', () => {
       expect(signUpResult.ok).toBe(true);
       if (!signUpResult.ok) return;
       identityLocalMocks.saveLocalIdentity.mockClear();
+
+      // `changeNick` reclama la claim primero y solo consulta `findByNickLower`
+      // si la clave está ocupada, así que hay que ocuparla para llegar a la
+      // operación colgada.
+      const preseed = await client.createNickClaim('otronick', 'otra-identidad');
+      expect(preseed.ok).toBe(true);
 
       const pending = service.changeNick(signUpResult.value, 'otronick');
       await vi.advanceTimersByTimeAsync(IDENTITY_TIMEOUT_MS);
@@ -1072,5 +1090,77 @@ describe('Property 14: superficie de datos salientes — el correo solo aparece 
       );
       expect(signUpOpsWithEmail.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// ─── Claim de nick huérfana (nick abandonado por un cambio de nick) ─────────
+
+describe('claim de nick huérfana: un nick abandonado vuelve a estar disponible', () => {
+  /**
+   * Reproduce el estado real observado en el sandbox: `UserIdentity` con el nick
+   * «vicmaf» y dos `NickClaim`, «vicma» y «vicmaf». La claim de «vicma» quedó
+   * huérfana al cambiar de nick, y dejaba ese nick inservible para todos.
+   */
+  async function conNickAbandonado() {
+    const client = createFakeIdentityClient();
+    const service = createIdentityService(client);
+
+    const alta = await service.signUp('vicma', 'vic@example.com');
+    if (!alta.ok) throw new Error('el alta de partida debería funcionar');
+
+    const cambio = await service.changeNick(alta.value, 'vicmaf');
+    if (!cambio.ok) throw new Error('el cambio de nick debería funcionar');
+
+    return { client, service, identidad: cambio.value };
+  }
+
+  it('el nick abandonado ya no pertenece a ninguna identidad', async () => {
+    const { client } = await conNickAbandonado();
+
+    expect(await client.findByNickLower('vicma')).toBeNull();
+    // …pero su claim sigue ahí: es lo que causaba el limbo.
+    expect(await client.getNickClaim('vicma')).not.toBeNull();
+  });
+
+  it('otra persona puede dar de alta el nick abandonado', async () => {
+    const { service } = await conNickAbandonado();
+
+    const otra = await service.signUp('vicma', 'otra@example.com');
+
+    expect(otra.ok).toBe(true);
+    if (otra.ok) expect(otra.value.nick).toBe('vicma');
+  });
+
+  it('su dueño original puede recuperarlo con un cambio de nick', async () => {
+    const { service, identidad } = await conNickAbandonado();
+
+    const vuelta = await service.changeNick(identidad, 'vicma');
+
+    expect(vuelta.ok).toBe(true);
+    if (vuelta.ok) {
+      expect(vuelta.value.nick).toBe('vicma');
+      // Mismo registro: el id no cambia nunca (Req 5.2).
+      expect(vuelta.value.userIdentityId).toBe(identidad.userIdentityId);
+    }
+  });
+
+  it('un nick que sí lleva una identidad sigue rechazándose', async () => {
+    const { service } = await conNickAbandonado();
+
+    // «vicmaf» es el nick vivo de la identidad existente.
+    const alta = await service.signUp('vicmaf', 'tercera@example.com');
+
+    expect(alta.ok).toBe(false);
+    if (!alta.ok) expect(alta.error.kind).toBe('NICK_TAKEN');
+  });
+
+  it('tras recuperarlo, «Ya tengo nick» concede el acceso con ese nick', async () => {
+    const { service, identidad } = await conNickAbandonado();
+    await service.changeNick(identidad, 'vicma');
+
+    const entrada = await service.signIn('vicma');
+
+    expect(entrada.ok).toBe(true);
+    if (entrada.ok) expect(entrada.value.nick).toBe('vicma');
   });
 });

@@ -14,7 +14,8 @@ import { startMinuteWriter } from '../storage/minuteWriter';
 import type { MinuteWriter } from '../storage/minuteWriter';
 import { createSynchronizer } from '../storage/synchronizer';
 import type { Synchronizer } from '../storage/synchronizer';
-import { loadLocalIdentity, clearLocalIdentity } from '../storage/identityLocal';
+import { loadLocalIdentity } from '../storage/identityLocal';
+import { clearAllLocalUserData } from '../storage/db';
 import { createIdentityService } from '../storage/identityService';
 import { createRealIdentityClient, ensureGuestSession } from '../storage/identityClient';
 import type { ActiveIdentity, IdentityError } from '../storage/identityErrors';
@@ -454,16 +455,34 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   switchUser: async () => {
-    await clearLocalIdentity();
+    // El orden importa. `stop()` hace un `flushNow()` que persiste el perfil
+    // pendiente, así que primero se para (y se escribe lo que quedara), después
+    // se borra, y solo entonces se reinicia el estado en memoria. Al revés, el
+    // primer frame posterior al borrado volvería a guardar el GameState viejo
+    // por el debounce de `pushFrame`.
+    if (get().isRunning) get().stop();
+
     _synchronizer?.stop();
     _synchronizer = null;
+
+    await clearAllLocalUserData();
+
     set({
+      // Identidad fuera: vuelta al Formulario_Acceso (Req 4.4).
       identity: null,
       identityPhase: 'form',
       identityMessage: null,
       identityMessageField: null,
       emailTakenNick: null,
       localSaveFailed: false,
+      // Progreso en memoria a su valor inicial, en la misma acción que borra
+      // IndexedDB: si no, la interfaz seguiría mostrando el XP y el nivel de
+      // quien acaba de salir.
+      game: INITIAL_GAME_STATE,
+      calibration: null,
+      calibrationError: null,
+      teamCode: null,
+      frame: null,
     });
   },
 

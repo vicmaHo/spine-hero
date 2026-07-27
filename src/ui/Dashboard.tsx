@@ -8,6 +8,7 @@ import { SyncControl } from './SyncControl';
 import { TeamCodeInput } from './TeamCodeInput';
 import { RankingPanel } from './RankingPanel';
 import { GuestNotice } from './GuestNotice';
+import { NickSettings } from './NickSettings';
 import type { PostureError } from '../contracts/posture';
 
 const STATUS_BG: Record<string, string> = {
@@ -133,8 +134,9 @@ export function Dashboard() {
             </p>
           )}
 
-          {/* Código de equipo + login opcional para sincronización */}
+          {/* Identidad, código de equipo y sincronización. */}
           <div className="border-t border-gray-800 pt-3 flex flex-col gap-3">
+            <NickSettings />
             <TeamCodeInput />
             <SyncControl />
           </div>
