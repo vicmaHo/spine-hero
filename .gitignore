@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+amplify_outputs*
+.amplify/
+
+# Utilidades de investigación del experimento de ruido de z (no van a la rama)
+fixtures/analyzeNoise.ts
+src/vision/captureSession.ts
+# Grabaciones reales de landmarks (datos biométricos, nunca al repo)
+fixtures/session-real*.json
+fixtures/session-lateral*.json
+fixtures/session-frontal*.json

@@ -1,0 +1,112 @@
+/**
+ * Web Worker de tipo módulo para inferencia de MediaPipe PoseLandmarker.
+ * Protocolo: ToWorkerMessage → FromWorkerMessage (src/contracts/worker.ts).
+ *
+ * Assets servidos desde /public: nunca desde CDN.
+ */
+
+import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
+import type { ToWorkerMessage, FromWorkerMessage, Landmark } from '../contracts/worker';
+import { LM } from '../contracts/worker';
+
+let landmarker: PoseLandmarker | null = null;
+
+// Timestamp monotónico para MediaPipe (en ms desde carga, cabe en int32).
+// NO usar Date.now(): epoch ms desborda el int32 del binding WASM y se clampa
+// a 2147483647 en todos los frames, rompiendo la monotonía que MediaPipe exige.
+let lastVideoTs = 0;
+
+/** Índices que extraemos del resultado de MediaPipe (solo 5). */
+const USED_INDICES = [LM.NOSE, LM.LEFT_EAR, LM.RIGHT_EAR, LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER];
+
+function post(msg: FromWorkerMessage): void {
+  self.postMessage(msg);
+}
+
+async function handleInit(wasmPath: string, modelPath: string): Promise<void> {
+  try {
+    // Segundo argumento `true` indica que use la variante ES module (_module_)
+    // necesaria para workers de tipo módulo donde importScripts() no funciona.
+    const vision = await FilesetResolver.forVisionTasks(wasmPath, true);
+    landmarker = await PoseLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: modelPath,
+        delegate: 'GPU',
+      },
+      runningMode: 'VIDEO',
+      numPoses: 1,
+    });
+    post({ type: 'READY' });
+  } catch (err: unknown) {
+    const detail = err instanceof Error ? err.message : String(err);
+    post({ type: 'ERROR', message: detail });
+  }
+}
+
+function handleFrame(bitmap: ImageBitmap, t: number): void {
+  const t0 = performance.now();
+  try {
+    if (!landmarker) {
+      post({ type: 'ERROR', message: 'Landmarker no inicializado' });
+      return;
+    }
+
+    // Timestamp para MediaPipe: monotónico y acotado a int32 (ver lastVideoTs).
+    let videoTs = Math.round(performance.now());
+    if (videoTs <= lastVideoTs) videoTs = lastVideoTs + 1;
+    lastVideoTs = videoTs;
+
+    const result = landmarker.detectForVideo(bitmap, videoTs);
+    const inferenceMs = performance.now() - t0;
+
+    if (!result.landmarks || result.landmarks.length === 0) {
+      // Sin persona detectada: devolvemos landmarks vacíos
+      post({ type: 'LANDMARKS', t, landmarks: [], inferenceMs });
+      return;
+    }
+
+    // Extraemos solo los 5 landmarks que usamos
+    const poseLandmarks = result.landmarks[0];
+    const filtered: Landmark[] = USED_INDICES.map((idx) => ({
+      x: poseLandmarks[idx].x,
+      y: poseLandmarks[idx].y,
+      z: poseLandmarks[idx].z,
+      visibility: poseLandmarks[idx].visibility ?? 0,
+    }));
+
+    post({ type: 'LANDMARKS', t, landmarks: filtered, inferenceMs });
+  } catch (err: unknown) {
+    // Si detectForVideo lanza (p. ej. timestamp no monotónico o fallo de GPU),
+    // avisamos en vez de dejar que la excepción wedgee el pipeline (el main
+    // thread nunca resetearía `busy` y se cortarían todos los frames).
+    const detail = err instanceof Error ? err.message : String(err);
+    post({ type: 'ERROR', message: detail });
+  } finally {
+    // Único punto de cierre del bitmap: cubre todas las rutas (sin landmarker,
+    // sin persona, éxito y excepción). Sin esto la pestaña fuga memoria en
+    // minutos a 5 FPS.
+    bitmap.close();
+  }
+}
+
+function handleStop(): void {
+  if (landmarker) {
+    landmarker.close();
+    landmarker = null;
+  }
+}
+
+self.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
+  const msg = e.data;
+  switch (msg.type) {
+    case 'INIT':
+      void handleInit(msg.wasmPath, msg.modelPath);
+      break;
+    case 'FRAME':
+      handleFrame(msg.bitmap, msg.t);
+      break;
+    case 'STOP':
+      handleStop();
+      break;
+  }
+};

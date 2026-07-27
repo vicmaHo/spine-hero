@@ -1,9 +1,524 @@
 @import "tailwindcss";
 
-body {
-  margin: 0;
+/* ═══════════════════════════════════════════════════
+   Fuentes auto-alojadas (regla de privacidad: nada de Google Fonts)
+   ═══════════════════════════════════════════════════ */
+
+@font-face {
+  font-family: 'PressStart2P';
+  src: url('/fonts/PressStart2P.ttf') format('truetype');
+  font-display: swap;
 }
 
-#root {
-  min-height: 100svh;
+/* ═══════════════════════════════════════════════════
+   Paleta: naturaleza y fantasía. Sin negros puros.
+   ═══════════════════════════════════════════════════ */
+
+:root {
+  /* Maderas y beige */
+  --wood-dark:    #3b2a1c;
+  --wood-mid:     #5c4128;
+  --wood-light:   #8a6239;
+  --beige:        #efdcb4;
+  --beige-deep:   #e2c793;
+  --parchment:    #f6e9c9;
+
+  /* Verdes */
+  --forest:       #1d3524;
+  --forest-mid:   #2c5138;
+  --moss:         #5e8c42;
+  --moss-light:   #8bbf5c;
+
+  /* Dorado envejecido */
+  --gold:         #d9a938;
+  --gold-light:   #f2cf6b;
+  --gold-dark:    #9c7420;
+
+  /* Magia */
+  --arcane:       #8b5cf6;
+  --arcane-dark:  #5b3a9e;
+
+  /* Acentos de estado */
+  --ember:        #c0392b;
+  --sky:          #3d7ea6;
+
+  /* Fondo del mundo: madera cálida iluminada. Los huecos tallados van oscuros. */
+  --backdrop:     #6b5236;
+  --backdrop-mid: #4a3823;
+  --backdrop-deep: #382a1a;
+  --backdrop-alt: #221a11;
+
+  --font-pixel: 'PressStart2P', monospace;
+  --font-body: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--wood-dark);
+  /* El fondo real es una imagen que monta el Dashboard. Aquí solo queda un
+     color base neutro para el rebote de scroll y mientras la imagen carga. */
+  background-color: var(--backdrop-deep);
+}
+
+/* ═══════════════════════════════════════════════════
+   Tipografía
+   ═══════════════════════════════════════════════════ */
+
+.font-pixel {
+  font-family: var(--font-pixel);
+  letter-spacing: 0.05em;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════════════
+   Marcos de panel estilo RPG
+   Doble borde: exterior oscuro tallado + interior dorado
+   ═══════════════════════════════════════════════════ */
+
+.rpg-panel {
+  position: relative;
+  background:
+    linear-gradient(180deg, var(--parchment) 0%, var(--beige) 45%, var(--beige-deep) 100%);
+  border: 3px solid var(--wood-dark);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 0 2px var(--gold-dark),
+    inset 0 2px 0 3px rgba(255, 255, 255, 0.45),
+    inset 0 -3px 0 3px rgba(90, 62, 30, 0.18),
+    0 6px 0 0 rgba(20, 14, 8, 0.55),
+    0 14px 34px -8px rgba(0, 0, 0, 0.7);
+}
+
+/* Variante oscura: madera. Para la cabecera del compañero y el pie. */
+.rpg-panel-dark {
+  position: relative;
+  background:
+    linear-gradient(180deg, var(--wood-mid) 0%, var(--wood-dark) 100%);
+  border: 3px solid #241a10;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 0 2px var(--gold-dark),
+    inset 0 2px 0 3px rgba(255, 210, 140, 0.16),
+    0 6px 0 0 rgba(12, 8, 4, 0.6),
+    0 14px 34px -8px rgba(0, 0, 0, 0.75);
+}
+
+/* Panel del compañero: el foco visual. Halo dorado permanente. */
+.rpg-panel-hero {
+  position: relative;
+  background: linear-gradient(180deg, var(--wood-mid) 0%, #2e2013 100%);
+  border: 3px solid #241a10;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 3px var(--gold),
+    inset 0 3px 0 4px rgba(255, 220, 150, 0.2),
+    0 0 0 1px rgba(217, 169, 56, 0.4),
+    0 8px 0 0 rgba(12, 8, 4, 0.6),
+    0 0 60px -10px rgba(217, 169, 56, 0.35),
+    0 20px 50px -10px rgba(0, 0, 0, 0.8);
+}
+
+/* Cinta de título que cuelga sobre el borde superior del panel */
+.rpg-ribbon {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  color: var(--gold-light);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+  background: linear-gradient(180deg, var(--forest-mid) 0%, var(--forest) 100%);
+  border: 2px solid #241a10;
+  border-radius: 7px;
+  padding: 7px 16px;
+  box-shadow:
+    inset 0 0 0 1px var(--gold-dark),
+    inset 0 2px 0 2px rgba(255, 220, 150, 0.14),
+    0 4px 0 0 rgba(12, 8, 4, 0.5),
+    0 8px 18px -4px rgba(0, 0, 0, 0.6);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* Hueco tallado: para la cámara, la habitación, los inputs */
+.rpg-inset {
+  background: var(--backdrop-alt);
+  border: 3px solid #241a10;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 3px 10px rgba(0, 0, 0, 0.75),
+    inset 0 0 0 1px rgba(217, 169, 56, 0.28);
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════
+   Botones RPG: relieve, borde grueso, sombra inferior
+   ═══════════════════════════════════════════════════ */
+
+.rpg-btn {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55);
+  border: 3px solid #241a10;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  cursor: pointer;
+  transform: translateY(0);
+  transition: transform 90ms ease, box-shadow 90ms ease, filter 160ms ease;
+  user-select: none;
+}
+
+/* El relieve: brillo arriba, sombra dura abajo (el "grosor" del botón) */
+.rpg-btn:not(:disabled):hover {
+  filter: brightness(1.12) saturate(1.05);
+}
+
+/* Animación al presionar: el botón se hunde y pierde la sombra inferior */
+.rpg-btn:not(:disabled):active {
+  transform: translateY(4px);
+}
+
+.rpg-btn:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.65) brightness(0.7);
+  opacity: 0.55;
+}
+
+.rpg-btn:focus-visible {
+  outline: 3px solid var(--gold-light);
+  outline-offset: 2px;
+}
+
+.rpg-btn-green {
+  background: linear-gradient(180deg, #6ea84a 0%, #4a7a30 100%);
+  box-shadow:
+    inset 0 2px 0 2px rgba(190, 240, 150, 0.35),
+    inset 0 -2px 0 2px rgba(20, 40, 10, 0.35),
+    0 5px 0 0 #2c4a1c,
+    0 10px 20px -6px rgba(0, 0, 0, 0.65);
+}
+.rpg-btn-green:not(:disabled):active {
+  box-shadow:
+    inset 0 2px 0 2px rgba(190, 240, 150, 0.25),
+    0 1px 0 0 #2c4a1c,
+    0 3px 8px -3px rgba(0, 0, 0, 0.6);
+}
+
+.rpg-btn-red {
+  background: linear-gradient(180deg, #c4523c 0%, #932f22 100%);
+  box-shadow:
+    inset 0 2px 0 2px rgba(255, 180, 160, 0.32),
+    inset 0 -2px 0 2px rgba(60, 15, 10, 0.35),
+    0 5px 0 0 #5e1b12,
+    0 10px 20px -6px rgba(0, 0, 0, 0.65);
+}
+.rpg-btn-red:not(:disabled):active {
+  box-shadow:
+    inset 0 2px 0 2px rgba(255, 180, 160, 0.22),
+    0 1px 0 0 #5e1b12,
+    0 3px 8px -3px rgba(0, 0, 0, 0.6);
+}
+
+.rpg-btn-blue {
+  background: linear-gradient(180deg, #4f93bd 0%, #2f6a91 100%);
+  box-shadow:
+    inset 0 2px 0 2px rgba(180, 225, 255, 0.34),
+    inset 0 -2px 0 2px rgba(10, 35, 55, 0.35),
+    0 5px 0 0 #1e455f,
+    0 10px 20px -6px rgba(0, 0, 0, 0.65);
+}
+.rpg-btn-blue:not(:disabled):active {
+  box-shadow:
+    inset 0 2px 0 2px rgba(180, 225, 255, 0.24),
+    0 1px 0 0 #1e455f,
+    0 3px 8px -3px rgba(0, 0, 0, 0.6);
+}
+
+.rpg-btn-purple {
+  background: linear-gradient(180deg, #8b5cf6 0%, #5f34ad 100%);
+  box-shadow:
+    inset 0 2px 0 2px rgba(215, 190, 255, 0.34),
+    inset 0 -2px 0 2px rgba(35, 15, 65, 0.35),
+    0 5px 0 0 #3f2277,
+    0 10px 20px -6px rgba(0, 0, 0, 0.65);
+}
+.rpg-btn-purple:not(:disabled):active {
+  box-shadow:
+    inset 0 2px 0 2px rgba(215, 190, 255, 0.24),
+    0 1px 0 0 #3f2277,
+    0 3px 8px -3px rgba(0, 0, 0, 0.6);
+}
+
+.rpg-btn-gold {
+  background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold) 100%);
+  color: #3b2a1c;
+  text-shadow: 0 1px 0 rgba(255, 240, 200, 0.6);
+  box-shadow:
+    inset 0 2px 0 2px rgba(255, 245, 205, 0.5),
+    inset 0 -2px 0 2px rgba(120, 85, 15, 0.3),
+    0 5px 0 0 var(--gold-dark),
+    0 10px 20px -6px rgba(0, 0, 0, 0.6);
+}
+.rpg-btn-gold:not(:disabled):active {
+  box-shadow:
+    inset 0 2px 0 2px rgba(255, 245, 205, 0.4),
+    0 1px 0 0 var(--gold-dark),
+    0 3px 8px -3px rgba(0, 0, 0, 0.55);
+}
+
+/* Madera: acción secundaria o de salida (volver, cerrar sesión, cancelar).
+   Se repetía como estilo en línea en la cabecera del dashboard; aquí queda
+   con nombre para que los controles nuevos usen exactamente el mismo relieve. */
+.rpg-btn-wood {
+  background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-mid) 100%);
+  box-shadow:
+    inset 0 2px 0 2px rgba(255, 220, 170, 0.22),
+    inset 0 -2px 0 2px rgba(40, 26, 12, 0.35),
+    0 4px 0 0 var(--wood-dark),
+    0 8px 16px -5px rgba(0, 0, 0, 0.6);
+}
+.rpg-btn-wood:not(:disabled):active {
+  box-shadow:
+    inset 0 2px 0 2px rgba(255, 220, 170, 0.16),
+    0 1px 0 0 var(--wood-dark),
+    0 3px 8px -3px rgba(0, 0, 0, 0.55);
+}
+
+/* Botón pequeño (Guardar, Buscar) */
+.rpg-btn-sm {
+  font-size: 9px;
+  padding: 9px 12px;
+  border-width: 2px;
+  gap: 6px;
+}
+
+/* Botón grande (llamadas a la acción de la landing) */
+.rpg-btn-lg {
+  font-size: 13px;
+  padding: 19px 28px;
+  gap: 12px;
+}
+
+/* ═══════════════════════════════════════════════════
+   Campos de formulario talladas en el panel
+   ═══════════════════════════════════════════════════ */
+
+.rpg-field {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--wood-dark);
+  background: var(--parchment);
+  border: 2px solid var(--wood-mid);
+  border-radius: 7px;
+  padding: 9px 11px;
+  box-shadow:
+    inset 0 2px 5px rgba(90, 62, 30, 0.28),
+    0 1px 0 0 rgba(255, 255, 255, 0.4);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.rpg-field::placeholder {
+  color: rgba(59, 42, 28, 0.42);
+}
+
+.rpg-field:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow:
+    inset 0 2px 5px rgba(90, 62, 30, 0.22),
+    0 0 0 3px rgba(217, 169, 56, 0.3);
+}
+
+.rpg-field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Etiqueta de campo */
+.rpg-label {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--wood-mid);
+  letter-spacing: 0.08em;
+}
+
+/* ═══════════════════════════════════════════════════
+   Barras segmentadas (pixeladas) para score y EXP
+   ═══════════════════════════════════════════════════ */
+
+.rpg-bar-track {
+  background: #2a2118;
+  border: 2px solid #241a10;
+  border-radius: 5px;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.7),
+    0 1px 0 0 rgba(255, 255, 255, 0.28);
+  overflow: hidden;
+}
+
+.rpg-bar-fill {
+  height: 100%;
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: inset 0 2px 0 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Segmento individual de una barra pixelada */
+.rpg-seg {
+  flex: 1;
+  border-radius: 2px;
+  transition: background-color 260ms ease, box-shadow 260ms ease;
+}
+
+/* ═══════════════════════════════════════════════════
+   Animaciones ambientales: vivas pero discretas
+   ═══════════════════════════════════════════════════ */
+
+/* Brillo suave pulsante (halo del panel del compañero) */
+@keyframes rpg-glow {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.85; }
+}
+.animate-rpg-glow {
+  animation: rpg-glow 4.5s ease-in-out infinite;
+}
+
+/* Partículas flotando hacia arriba */
+@keyframes rpg-float {
+  0%   { transform: translateY(0) translateX(0) scale(0.85); opacity: 0; }
+  18%  { opacity: 0.9; }
+  82%  { opacity: 0.7; }
+  100% { transform: translateY(-90px) translateX(10px) scale(1.15); opacity: 0; }
+}
+.animate-rpg-float {
+  animation: rpg-float 6s ease-in-out infinite;
+}
+
+/* Deriva lenta en zigzag: da profundidad al enjambre de chispas */
+@keyframes rpg-drift {
+  0%   { transform: translateY(0) translateX(0) scale(0.7); opacity: 0; }
+  22%  { opacity: 0.75; }
+  50%  { transform: translateY(-70px) translateX(-16px) scale(1); }
+  78%  { opacity: 0.5; }
+  100% { transform: translateY(-150px) translateX(12px) scale(0.6); opacity: 0; }
+}
+.animate-rpg-drift {
+  animation: rpg-drift 11s ease-in-out infinite;
+}
+
+/* Latido de los corazones de HP */
+@keyframes rpg-beat {
+  0%, 100% { transform: scale(1); }
+  14%      { transform: scale(1.18); }
+  28%      { transform: scale(1); }
+}
+.animate-rpg-beat {
+  animation: rpg-beat 2.4s ease-in-out infinite;
+}
+
+/* Punto "En vivo" */
+@keyframes rpg-blink {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px 2px rgba(139, 191, 92, 0.8); }
+  50%      { opacity: 0.45; box-shadow: 0 0 3px 0 rgba(139, 191, 92, 0.4); }
+}
+.animate-rpg-blink {
+  animation: rpg-blink 1.9s ease-in-out infinite;
+}
+
+/* Brillo que recorre la barra de EXP */
+@keyframes rpg-sheen {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(320%); }
+}
+.animate-rpg-sheen {
+  animation: rpg-sheen 3.2s ease-in-out infinite;
+}
+
+/* Entrada del logo en la pantalla de carga */
+@keyframes splash-in {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-splash-in {
+  animation: splash-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Entrada retardada del subtítulo y la barra */
+.animate-splash-in-delayed {
+  animation: splash-in 900ms cubic-bezier(0.22, 1, 0.36, 1) 320ms both;
+}
+
+/* Aparición al entrar en el viewport (landing) */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 680ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 680ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Hover elegante de tarjeta */
+.rpg-hover-lift {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease;
+}
+.rpg-hover-lift:hover {
+  transform: translateY(-3px);
+}
+
+/* Respeto por prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-rpg-glow,
+  .animate-rpg-float,
+  .animate-rpg-drift,
+  .animate-rpg-beat,
+  .animate-rpg-blink,
+  .animate-rpg-sheen,
+  .animate-splash-in,
+  .animate-splash-in-delayed {
+    animation: none;
+  }
+  .rpg-hover-lift:hover {
+    transform: none;
+  }
+  /* Sin animación de entrada: el contenido se muestra directamente */
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* El canvas pixel-art nunca se interpola */
+.pixelated {
+  image-rendering: pixelated;
+}
+
+/* Scrollbar integrada en el tema */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--backdrop-alt);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--wood-light);
+  border: 2px solid var(--backdrop-alt);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold-dark);
 }

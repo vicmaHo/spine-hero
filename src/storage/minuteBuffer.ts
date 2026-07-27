@@ -25,10 +25,28 @@ export function createMinuteBuffer(): MinuteBuffer {
   let scores: number[] = [];
   let goodCount = 0;
   let badCount = 0;
+  /**
+   * Fecha y minuto del primer frame acumulado, es decir el minuto que estas
+   * medidas describen.
+   *
+   * Se captura al empezar a acumular y no al hacer flush porque `minuteWriter`
+   * vuelca justo *después* de cruzar el límite de minuto: leer el reloj en
+   * `flush()` etiquetaba cada entrada con el minuto siguiente al que había
+   * medido. Además de desplazar todos los datos un minuto (y de atribuir al día
+   * siguiente lo acumulado en el último minuto de la noche), hacía que un flush
+   * a mitad de minuto —el de `stop()`— escribiera bajo la misma clave que la
+   * entrada anterior y la sobrescribiera, porque `db.put` es un upsert.
+   */
+  let measuredAt: { date: string; minute: number } | null = null;
 
   return {
     push(frame: PostureFrame): void {
       if (!QUALIFYING_STATUSES.has(frame.status as 'GOOD' | 'BAD')) return;
+
+      if (measuredAt === null) {
+        const now = new Date();
+        measuredAt = { date: formatDate(now), minute: now.getHours() * 60 + now.getMinutes() };
+      }
 
       scores.push(frame.score);
       if (frame.status === 'GOOD') {
@@ -39,11 +57,9 @@ export function createMinuteBuffer(): MinuteBuffer {
     },
 
     flush(): MinuteEntry | null {
-      if (scores.length === 0) return null;
+      if (scores.length === 0 || measuredAt === null) return null;
 
-      const now = new Date();
-      const date = formatDate(now);
-      const minute = now.getHours() * 60 + now.getMinutes();
+      const { date, minute } = measuredAt;
 
       const avgScore = Math.round(
         scores.reduce((sum, s) => sum + s, 0) / scores.length
@@ -63,6 +79,7 @@ export function createMinuteBuffer(): MinuteBuffer {
       scores = [];
       goodCount = 0;
       badCount = 0;
+      measuredAt = null;
     },
   };
 }

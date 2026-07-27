@@ -19,6 +19,7 @@ function makeFrame(
 describe('minuteBuffer', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('flush devuelve null si no se acumularon frames', () => {
@@ -35,13 +36,14 @@ describe('minuteBuffer', () => {
   });
 
   it('acumula frames GOOD y BAD y calcula avgScore correctamente', () => {
+    // El minuto se captura al primer push, así que el reloj se fija antes.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-01-15T10:30:00'));
+
     const buf = createMinuteBuffer();
     buf.push(makeFrame('GOOD', 80));
     buf.push(makeFrame('GOOD', 90));
     buf.push(makeFrame('BAD', 40));
-
-    // Fijar la fecha para el flush
-    vi.setSystemTime(new Date('2025-01-15T10:30:00'));
 
     const entry = buf.flush();
     expect(entry).not.toBeNull();
@@ -50,13 +52,62 @@ describe('minuteBuffer', () => {
     expect(entry!.minute).toBe(10 * 60 + 30); // 630
   });
 
+  it('etiqueta la entrada con el minuto en que se acumuló, no con el del flush', () => {
+    // `minuteWriter` vuelca justo DESPUÉS de cruzar el límite de minuto: si el
+    // minuto se leyera en `flush()`, esta entrada quedaría etiquetada como 631.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-01-15T10:30:20'));
+
+    const buf = createMinuteBuffer();
+    buf.push(makeFrame('GOOD', 80));
+
+    vi.setSystemTime(new Date('2025-01-15T10:31:00'));
+
+    const entry = buf.flush()!;
+    expect(entry.minute).toBe(10 * 60 + 30); // 630, el minuto medido
+  });
+
+  it('atribuye al día correcto lo acumulado en el último minuto de la noche', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-01-15T23:59:30'));
+
+    const buf = createMinuteBuffer();
+    buf.push(makeFrame('GOOD', 80));
+
+    // El flush cae ya en el día siguiente.
+    vi.setSystemTime(new Date('2025-01-16T00:00:00'));
+
+    const entry = buf.flush()!;
+    expect(entry.date).toBe('2025-01-15');
+    expect(entry.minute).toBe(23 * 60 + 59); // 1439
+  });
+
+  it('tras un reset, la clave la fija el primer frame del tramo nuevo', () => {
+    // Es lo que evita que el flush de `stop()`, a mitad de minuto, escriba bajo
+    // la clave del minuto ya volcado y lo sobrescriba (db.put es upsert).
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-01-15T10:30:10'));
+
+    const buf = createMinuteBuffer();
+    buf.push(makeFrame('GOOD', 80));
+
+    vi.setSystemTime(new Date('2025-01-15T10:31:00'));
+    expect(buf.flush()!.minute).toBe(630);
+    buf.reset();
+
+    // Tramo siguiente: frames del minuto 631, parada a mitad de minuto.
+    buf.push(makeFrame('GOOD', 70));
+    vi.setSystemTime(new Date('2025-01-15T10:31:30'));
+
+    expect(buf.flush()!.minute).toBe(631);
+  });
+
   it('dominantStatus es GOOD cuando hay más frames GOOD', () => {
     const buf = createMinuteBuffer();
     buf.push(makeFrame('GOOD', 80));
     buf.push(makeFrame('GOOD', 85));
     buf.push(makeFrame('BAD', 40));
 
-    vi.setSystemTime(new Date('2025-01-15T00:00:00'));
     const entry = buf.flush()!;
     expect(entry.dominantStatus).toBe('GOOD');
   });
@@ -66,7 +117,6 @@ describe('minuteBuffer', () => {
     buf.push(makeFrame('GOOD', 80));
     buf.push(makeFrame('BAD', 40));
 
-    vi.setSystemTime(new Date('2025-01-15T00:00:00'));
     const entry = buf.flush()!;
     expect(entry.dominantStatus).toBe('BAD');
   });
@@ -76,7 +126,6 @@ describe('minuteBuffer', () => {
     // 12 frames GOOD → floor(12/5) = 2
     for (let i = 0; i < 12; i++) buf.push(makeFrame('GOOD', 80));
 
-    vi.setSystemTime(new Date('2025-01-15T00:00:00'));
     const entry = buf.flush()!;
     expect(entry.goodSeconds).toBe(2);
   });
@@ -86,7 +135,6 @@ describe('minuteBuffer', () => {
     // 350 frames GOOD → floor(350/5) = 70, clamped a 60
     for (let i = 0; i < 350; i++) buf.push(makeFrame('GOOD', 80));
 
-    vi.setSystemTime(new Date('2025-01-15T00:00:00'));
     const entry = buf.flush()!;
     expect(entry.goodSeconds).toBe(60);
   });
@@ -105,7 +153,6 @@ describe('minuteBuffer', () => {
     buf.push(makeFrame('GOOD', 34));
     // (33+33+34)/3 = 33.333... → 33
 
-    vi.setSystemTime(new Date('2025-01-15T00:00:00'));
     const entry = buf.flush()!;
     expect(entry.avgScore).toBe(33);
   });
