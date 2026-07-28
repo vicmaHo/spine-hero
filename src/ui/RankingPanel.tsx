@@ -187,6 +187,8 @@ export function RankingPanel() {
   }, [activeCode, fetchRanking]);
 
   const podium = ranking.slice(0, PODIUM_SIZE);
+  /** El resto de la tabla: mismo orden, presentación plana. */
+  const rest = ranking.slice(PODIUM_SIZE);
   const leaderSeconds = podium.length > 0 ? podium[0].goodPostureSeconds : 0;
 
   const handleInputChange = (value: string) => {
@@ -299,8 +301,9 @@ export function RankingPanel() {
               const filled = Math.max(1, Math.round(ratio * 7));
 
               return (
+                // Índice en la clave: varias filas pueden llamarse «Anónimo».
                 <div
-                  key={entry.displayName}
+                  key={`${index}-${entry.displayName}`}
                   className="rpg-hover-lift flex items-center gap-3 rounded-lg border-2 border-[#c9ab74] bg-[rgba(255,255,255,0.36)] px-3 py-2.5"
                   style={{ boxShadow: 'inset 0 2px 0 1px rgba(255,255,255,0.5), 0 3px 0 0 rgba(92,65,40,0.22)' }}
                 >
@@ -367,6 +370,35 @@ export function RankingPanel() {
               );
             })}
           </div>
+
+          {/* Del cuarto puesto en adelante: mismo orden, sin medalla ni
+              estandarte. Solo el número, para que el podio siga destacando. */}
+          {rest.length > 0 && (
+            <ol className="mt-2.5 flex flex-col gap-1.5" start={PODIUM_SIZE + 1}>
+              {rest.map((entry, index) => (
+                <li
+                  key={`${index + PODIUM_SIZE}-${entry.displayName}`}
+                  className="flex items-center gap-3 rounded-md border-2 border-[#c9ab74] bg-[rgba(255,255,255,0.22)] px-3 py-1.5"
+                >
+                  <span className="font-pixel w-7 shrink-0 text-center text-[10px] tabular-nums text-[#8a6239]">
+                    {index + PODIUM_SIZE + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[12px] font-bold text-[#3b2a1c]">
+                    {entry.displayName}
+                  </span>
+                  <span className="font-pixel shrink-0 text-[8px] tabular-nums text-[#9c7420]">
+                    Lv.{entry.level}
+                  </span>
+                  <span
+                    className="font-pixel shrink-0 text-[10px] tabular-nums text-[#9c7420]"
+                    title={`${entry.goodPostureSeconds} s de buena postura`}
+                  >
+                    {formatSeconds(entry.goodPostureSeconds)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
         </>
       )}
     </section>
