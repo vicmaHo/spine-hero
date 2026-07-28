@@ -50,14 +50,22 @@ export function longestFlowStreakMinutes(minutes: MinuteEntry[]): number {
  * Agrega las entradas de minuto y el perfil del usuario en un Checkpoint
  * listo para sincronizar con el backend.
  * Función pura: sin DOM, sin efectos, sin Date.now().
+ *
+ * `carriedGoodSeconds` son los segundos que la nube ya tenía para este nick y
+ * esta fecha cuando se concedió el acceso (ver `DayCarryRecord`). Se suman solo
+ * a `goodPostureSeconds`: `avgScore` es la media de los minutos realmente
+ * medidos en local, y `longestFlowStreak` es un máximo que el
+ * Validador_AntiTrampa ya conserva del lado servidor.
  */
 export function buildCheckpoint(
   date: string,
   minutes: MinuteEntry[],
   profile: ProfileRecord,
   teamCode?: string,
+  carriedGoodSeconds = 0,
 ): Checkpoint {
-  const goodPostureSeconds = minutes.reduce((sum, m) => sum + m.goodSeconds, 0);
+  const goodPostureSeconds =
+    carriedGoodSeconds + minutes.reduce((sum, m) => sum + m.goodSeconds, 0);
 
   const avgScore =
     minutes.length > 0

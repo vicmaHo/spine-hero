@@ -470,6 +470,45 @@ body {
   transform: none;
 }
 
+/* ═══════════════════════════════════════════════════
+   Subrayado pixelado de los enlaces de navegación
+   ═══════════════════════════════════════════════════ */
+
+.rpg-navlink {
+  position: relative;
+}
+
+/*
+ * El subrayado no es una línea continua: es una fila de bloques de 4px con
+ * hueco de 2px, y crece con `steps()` en vez de suave. Los dos detalles son
+ * lo que lo hace leer como pixel-art y no como un underline moderno.
+ * `bottom` negativo para no alterar la altura del enlace ni mover la barra.
+ */
+.rpg-navlink::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -9px;
+  height: 4px;
+  width: 100%;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--gold-light) 0,
+    var(--gold-light) 4px,
+    transparent 4px,
+    transparent 6px
+  );
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.55));
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 240ms steps(7, end);
+}
+
+.rpg-navlink:hover::after,
+.rpg-navlink:focus-visible::after {
+  transform: scaleX(1);
+}
+
 /* Hover elegante de tarjeta */
 .rpg-hover-lift {
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease;
@@ -497,6 +536,10 @@ body {
   .reveal {
     opacity: 1;
     transform: none;
+    transition: none;
+  }
+  /* El subrayado sigue apareciendo, pero sin recorrido */
+  .rpg-navlink::after {
     transition: none;
   }
 }

@@ -1,6 +1,31 @@
 import type { GameState } from '../contracts/game';
+import type { PostureFrame } from '../contracts/posture';
 import { xpProgress } from '../game/engine';
-import { SPRITE_SIZE, HEARTS_COUNT, HP_PER_HEART, FLOW_MILESTONES } from './constants';
+import {
+  SPRITE_SIZE,
+  HEARTS_COUNT,
+  HP_PER_HEART,
+  FLOW_MILESTONES,
+  SCORE_SEGMENTS,
+  SCORE_SEG_WIDTH,
+  SCORE_SEG_GAP,
+  SCORE_SEG_HEIGHT,
+} from './constants';
+
+/**
+ * Tramos de calidad del puntaje. Mismos cortes y colores que el panel del
+ * dashboard, para que la ventana flotante no muestre otra escala.
+ */
+const SCORE_TIERS = [
+  { min: 80, color: '#8BBF5C' },
+  { min: 60, color: '#6EA84A' },
+  { min: 40, color: '#D9A938' },
+  { min: 0,  color: '#C4523C' },
+] as const;
+
+function scoreColor(score: number): string {
+  return (SCORE_TIERS.find((t) => score >= t.min) ?? SCORE_TIERS[SCORE_TIERS.length - 1]).color;
+}
 
 // Colores del HUD
 const COLOR_HEART_FULL = '#FF2222';
@@ -11,12 +36,18 @@ const COLOR_FLOW_FILLED = '#44DD44';
 const COLOR_FLOW_EMPTY = '#555555';
 const COLOR_XP_BAR = '#FFD700';
 const COLOR_XP_BG = '#333333';
+const COLOR_SCORE_EMPTY = '#3A3A3A';
+const COLOR_SCORE_UNKNOWN = '#777777';
 
 /**
  * Dibuja la capa de HUD debajo del sprite:
  * corazones de HP, nivel, barra de Flow y barra de XP.
  */
-export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
+export function drawHUD(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  frame: PostureFrame | null,
+): void {
   const y0 = SPRITE_SIZE; // inicio vertical del HUD
   const width = SPRITE_SIZE; // mismo ancho que el canvas
 
@@ -37,6 +68,44 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
 
   // --- Barra de XP (debajo del nivel, fina de 2px) ---
   drawXPBar(ctx, state.xp, state.level, 52, y0 + 16, width - 54);
+
+  // --- Puntaje de postura (fila propia abajo) ---
+  drawScore(ctx, frame, y0 + 28);
+}
+
+/**
+ * Dibuja el puntaje de postura: porcentaje a la izquierda y barra segmentada
+ * a la derecha, ambos del color del tramo. Es el dato que el usuario quiere
+ * consultar sin volver a la ventana principal.
+ *
+ * Las medidas son enteras a propósito (7px de bloque y 1px de hueco, 79px en
+ * total) para que al escalar el canvas los bloques no queden borrosos.
+ */
+function drawScore(
+  ctx: CanvasRenderingContext2D,
+  frame: PostureFrame | null,
+  y: number,
+): void {
+  const hasFrame = frame !== null;
+  const score = hasFrame ? Math.max(0, Math.min(100, Math.round(frame.score))) : 0;
+  const color = hasFrame ? scoreColor(score) : COLOR_SCORE_UNKNOWN;
+
+  ctx.font = '8px PressStart2P';
+  ctx.textBaseline = 'top';
+
+  // Porcentaje. Sin frame todavía se muestran guiones, no un 0% engañoso.
+  ctx.fillStyle = color;
+  ctx.fillText(hasFrame ? `${score}%` : '--%', 2, y - 1);
+
+  // Barra segmentada, anclada al borde derecho del canvas
+  const totalWidth = SCORE_SEGMENTS * SCORE_SEG_WIDTH + (SCORE_SEGMENTS - 1) * SCORE_SEG_GAP;
+  const barX = SPRITE_SIZE - 2 - totalWidth;
+  const filled = hasFrame ? Math.round((score / 100) * SCORE_SEGMENTS) : 0;
+
+  for (let i = 0; i < SCORE_SEGMENTS; i++) {
+    ctx.fillStyle = i < filled ? color : COLOR_SCORE_EMPTY;
+    ctx.fillRect(barX + i * (SCORE_SEG_WIDTH + SCORE_SEG_GAP), y, SCORE_SEG_WIDTH, SCORE_SEG_HEIGHT);
+  }
 }
 
 /**

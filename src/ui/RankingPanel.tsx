@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import type { TeamEntry } from '../contracts/sync';
@@ -19,6 +19,17 @@ const TEAM_CODE_REGEX = /^[A-Za-z0-9]{4,20}$/;
 
 /** Solo se muestra el podio. Nada de tablas enormes. */
 const PODIUM_SIZE = 3;
+
+/**
+ * Cada cuánto se refresca el ranking en segundo plano.
+ *
+ * El techo real de frescura lo marca el Sincronizador, que sube el checkpoint
+ * cada minuto (más el flush al ocultar la pestaña), así que bajar de esto no
+ * aporta datos más nuevos: solo peticiones. Se descarta la subscripción de
+ * AppSync a propósito, porque su canal realtime (`wss://…appsync-realtime-api…`)
+ * exigiría un tercer origen en `connect-src` y la CSP debe quedarse en dos.
+ */
+export const RANKING_REFRESH_MS = 30_000;
 
 /** Estilo de cada puesto del podio: medalla y color del estandarte. */
 const PODIUM_STYLES = [
@@ -75,25 +86,105 @@ export function RankingPanel() {
   const myStreakDays = useAppStore((s) => s.game.streakDays);
   const [teamCode, setTeamCode] = useState(myTeamCode ?? '');
   const [validationError, setValidationError] = useState('');
-  // Nick activo del propio usuario, leído del Almacen_Local_Identidad (ver
-  // TODO junto al import): identifica cuál fila del ranking es «la mía» para
-  // rellenar streakDays desde el GameState local.
-  const [ownNick, setOwnNick] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadLocalIdentity().then((result) => {
-      if (result.ok && result.value) setOwnNick(result.value.nick);
-    });
-  }, []);
-
-  // Rellena el buscador con "mi código" cuando el usuario lo guarda en controles.
-  useEffect(() => {
-    if (myTeamCode) setTeamCode(myTeamCode);
-  }, [myTeamCode]);
   const [ranking, setRanking] = useState<TeamEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [queryError, setQueryError] = useState('');
+  /** Código realmente mostrado y refrescado. El input es solo texto en curso. */
+  const [activeCode, setActiveCode] = useState<string | null>(null);
+
+  // Nick activo del propio usuario, leído del Almacen_Local_Identidad (ver
+  // TODO junto al import): identifica cuál fila del ranking es «la mía» para
+  // rellenar streakDays desde el GameState local.
+  //
+  // En refs, no en estado: los lee la consulta, no el render. Si fueran
+  // dependencias del efecto de refresco, cada cambio de racha reiniciaría el
+  // intervalo y el ranking no llegaría a refrescarse nunca.
+  const ownNickRef = useRef<string | null>(null);
+  const myStreakDaysRef = useRef(myStreakDays);
+  useEffect(() => {
+    myStreakDaysRef.current = myStreakDays;
+  }, [myStreakDays]);
+  /** Evita solapes: intervalo, vuelta de la pestaña y búsqueda manual coinciden. */
+  const inFlightRef = useRef(false);
+  const activeCodeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    loadLocalIdentity().then((result) => {
+      if (result.ok && result.value) ownNickRef.current = result.value.nick;
+    });
+  }, []);
+
+  // Rellena el buscador con "mi código" cuando el usuario lo guarda en
+  // controles, y arranca ya el ranking de ese equipo sin esperar a BUSCAR.
+  useEffect(() => {
+    if (!myTeamCode) return;
+    setTeamCode(myTeamCode);
+    const normalized = myTeamCode.trim().toUpperCase();
+    if (TEAM_CODE_REGEX.test(normalized)) {
+      setActiveCode(normalized);
+      setSearched(true);
+    }
+  }, [myTeamCode]);
+
+  /**
+   * Consulta el ranking del día para `code`.
+   *
+   * `silent` distingue el refresco automático de la búsqueda manual: en
+   * segundo plano no se toca `loading` (el podio parpadearía cada 30 s) ni se
+   * pinta error (un hipo de red no debe vaciar la tabla), simplemente se
+   * conserva lo último bueno hasta el siguiente tick.
+   */
+  const fetchRanking = useCallback(async (code: string, silent: boolean): Promise<void> => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    if (!silent) {
+      setLoading(true);
+      setQueryError('');
+    }
+
+    try {
+      const today = todayLocalDate();
+      const { data } = await client.models.DailyRecord.listByTeamAndDate({
+        teamCode: code,
+        date: { eq: today },
+      });
+
+      // Respuesta obsoleta: el equipo mostrado cambió mientras la consulta viajaba.
+      if (activeCodeRef.current !== code) return;
+
+      setRanking(buildRanking(data, ownNickRef.current, myStreakDaysRef.current));
+      setQueryError('');
+    } catch {
+      if (!silent && activeCodeRef.current === code) {
+        setQueryError('Error al consultar el ranking. Intenta de nuevo.');
+        setRanking([]);
+      }
+    } finally {
+      inFlightRef.current = false;
+      if (!silent) setLoading(false);
+    }
+  }, []);
+
+  // Primera carga del equipo activo + refresco periódico mientras la pestaña
+  // esté visible. Oculta no se consulta (el usuario está en su IDE, que es casi
+  // siempre) y al volver se refresca de inmediato para no mostrar datos viejos.
+  useEffect(() => {
+    if (activeCode === null) return;
+    activeCodeRef.current = activeCode;
+    void fetchRanking(activeCode, false);
+
+    const refresh = (): void => {
+      if (document.visibilityState === 'visible') void fetchRanking(activeCode, true);
+    };
+    const intervalId = setInterval(refresh, RANKING_REFRESH_MS);
+    document.addEventListener('visibilitychange', refresh);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [activeCode, fetchRanking]);
 
   const podium = ranking.slice(0, PODIUM_SIZE);
   const leaderSeconds = podium.length > 0 ? podium[0].goodPostureSeconds : 0;
@@ -107,7 +198,7 @@ export function RankingPanel() {
     }
   };
 
-  const handleSearch = async () => {
+  const handleSearch = () => {
     // La partition key del índice es case-sensitive: normalizamos igual que el store.
     const normalized = teamCode.trim().toUpperCase();
     if (!TEAM_CODE_REGEX.test(normalized)) {
@@ -115,24 +206,12 @@ export function RankingPanel() {
       return;
     }
 
-    setLoading(true);
-    setQueryError('');
     setSearched(true);
-
-    try {
-      const today = todayLocalDate();
-      const { data } = await client.models.DailyRecord.listByTeamAndDate({
-        teamCode: normalized,
-        date: { eq: today },
-      });
-
-      const entries = buildRanking(data, ownNick, myStreakDays);
-      setRanking(entries);
-    } catch {
-      setQueryError('Error al consultar el ranking. Intenta de nuevo.');
-      setRanking([]);
-    } finally {
-      setLoading(false);
+    if (normalized === activeCode) {
+      // Mismo equipo: el efecto no se reejecuta, así que esto es el reintento manual.
+      void fetchRanking(normalized, false);
+    } else {
+      setActiveCode(normalized);
     }
   };
 

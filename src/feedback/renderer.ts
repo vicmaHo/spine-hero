@@ -1,14 +1,21 @@
 import type { GameState } from '../contracts/game';
 import type { PostureFrame } from '../contracts/posture';
-import { FRAME_TOGGLE_MS, MOOD_TINT, SPRITE_SIZE, PARTICLE_COUNT } from './constants';
+import {
+  FRAME_TOGGLE_MS,
+  MOOD_TINT,
+  AWAY_TINT,
+  SPRITE_SIZE,
+  PARTICLE_COUNT,
+  HUD_HEIGHT,
+} from './constants';
 import { drawHUD } from './hud';
 import { createParticleSystem } from './particles';
 import { loadSpriteSheet, drawSprite, MOOD_FRAME_MAP } from './spriteSheet';
 
-// Dimensiones del canvas: sprite 128×128, más 32px de HUD si se dibuja
-const CANVAS_WIDTH = 128;
-const CANVAS_HEIGHT_WITH_HUD = 160;
-const CANVAS_HEIGHT_NO_HUD = 128;
+// Dimensiones del canvas: el sprite, más la franja de HUD si se dibuja.
+const CANVAS_WIDTH = SPRITE_SIZE;
+const CANVAS_HEIGHT_WITH_HUD = SPRITE_SIZE + HUD_HEIGHT;
+const CANVAS_HEIGHT_NO_HUD = SPRITE_SIZE;
 
 export interface RendererOptions {
   canvas: HTMLCanvasElement;
@@ -32,7 +39,7 @@ export function createRenderer(opts: RendererOptions): {
   stop: () => void;
   triggerParticles: () => void;
 } {
-  const { canvas, getState, showHud = true } = opts;
+  const { canvas, getState, getLastFrame, showHud = true } = opts;
   const ctx = canvas.getContext('2d')!;
   const canvasHeight = showHud ? CANVAS_HEIGHT_WITH_HUD : CANVAS_HEIGHT_NO_HUD;
 
@@ -72,6 +79,7 @@ export function createRenderer(opts: RendererOptions): {
 
     const state = getState();
     const mood = state.mood;
+    const lastFrame = getLastFrame();
 
     // 2. Determinar frame de animación (toggle cada 500 ms)
     if (now - lastToggleTime >= FRAME_TOGGLE_MS) {
@@ -85,8 +93,11 @@ export function createRenderer(opts: RendererOptions): {
     // 3. Dibujar sprite base
     drawSprite(ctx, sheet, frameIndex, 0, 0);
 
-    // 4. Aplicar tinte con globalCompositeOperation = 'source-atop'
-    const tint = MOOD_TINT[mood];
+    // 4. Aplicar tinte con globalCompositeOperation = 'source-atop'.
+    // La ausencia manda sobre el mood: mientras el usuario no está, la
+    // mascota se ve gris aunque su último estado de ánimo fuese otro.
+    const isAway = lastFrame?.status === 'AWAY';
+    const tint = isAway ? AWAY_TINT : MOOD_TINT[mood];
     if (tint.alpha > 0) {
       ctx.globalCompositeOperation = 'source-atop';
       ctx.fillStyle = tint.color;
@@ -98,8 +109,8 @@ export function createRenderer(opts: RendererOptions): {
     // 5. Restaurar globalCompositeOperation para capas superiores
     ctx.globalCompositeOperation = 'source-over';
 
-    // 6. Dibujar HUD (corazones, nivel, Flow, XP) solo si se pidió
-    if (showHud) drawHUD(ctx, state);
+    // 6. Dibujar HUD (corazones, nivel, Flow, XP, puntaje) solo si se pidió
+    if (showHud) drawHUD(ctx, state, lastFrame);
 
     // 7. Actualizar y dibujar partículas
     const dt = lastFrameTime > 0 ? (now - lastFrameTime) / 1000 : 0;

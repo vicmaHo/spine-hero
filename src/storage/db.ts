@@ -48,6 +48,27 @@ export interface LocalIdentityRecord {
   userIdentityId: string;  // id inmutable del registro remoto
 }
 
+/**
+ * Segundos de buena postura que la nube ya tenía para el nick activo y esa
+ * fecha en el momento de conceder el acceso.
+ *
+ * Existe porque el cierre de sesión vacía `minutes`: al reentrar el mismo día,
+ * el cliente cree de buena fe que lleva 0 segundos y su fila del ranking se
+ * quedaría congelada hasta remontar lo que ya tenía. El acarreo se suma al
+ * total local en `buildCheckpoint`.
+ *
+ * Lleva la fecha en la clave para que un acarreo de hoy no contamine el
+ * checkpoint de mañana. **Solo se siembra al conceder el acceso**, nunca al
+ * arrancar la aplicación con una sesión ya iniciada: ahí los minutos locales
+ * siguen intactos y sumar el acarreo contaría dos veces lo mismo.
+ *
+ * Es metadato local de sincronización: nunca sale del navegador.
+ */
+export interface DayCarryRecord {
+  date: string;            // YYYY-MM-DD (keyPath)
+  goodSeconds: number;
+}
+
 export interface SpineHeroDB extends DBSchema {
   minutes: {
     key: [string, number]; // [date YYYY-MM-DD, minuteOfDay 0-1439]
@@ -65,10 +86,14 @@ export interface SpineHeroDB extends DBSchema {
     key: string;            // 'current'
     value: LocalIdentityRecord;
   };
+  dayCarry: {
+    key: string;           // date YYYY-MM-DD
+    value: DayCarryRecord;
+  };
 }
 
 const DB_NAME = 'spinehero';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 export function openSpineHeroDB(): Promise<IDBPDatabase<SpineHeroDB>> {
   return openDB<SpineHeroDB>(DB_NAME, DB_VERSION, {
@@ -86,6 +111,12 @@ export function openSpineHeroDB(): Promise<IDBPDatabase<SpineHeroDB>> {
       // profile y sync quedan intactos (Requisitos 5.4 y 12.7).
       if (oldVersion < 3) {
         db.createObjectStore('identity');
+      }
+      // v4: acarreo del día. Store nuevo aparte del perfil a propósito: el
+      // store escribe el ProfileRecord completo desde su estado en memoria cada
+      // pocos segundos, así que un campo del acarreo ahí se borraría solo.
+      if (oldVersion < 4) {
+        db.createObjectStore('dayCarry', { keyPath: 'date' });
       }
     },
   });
@@ -156,6 +187,19 @@ export async function setSyncedRecordId(
   await db.put('sync', { date, recordId, userIdentityId });
 }
 
+/** Segundos acarreados para `date`, o 0 si no hay acarreo de esa fecha. */
+export async function getDayCarrySeconds(date: string): Promise<number> {
+  const db = await getDB();
+  const record = await db.get('dayCarry', date);
+  return record?.goodSeconds ?? 0;
+}
+
+/** Guarda el acarreo de `date`, sustituyendo el anterior de esa misma fecha. */
+export async function setDayCarrySeconds(date: string, goodSeconds: number): Promise<void> {
+  const db = await getDB();
+  await db.put('dayCarry', { date, goodSeconds });
+}
+
 /** Lee el Almacen_Local_Identidad. Devuelve null si no existe. */
 export async function getLocalIdentityRecord(): Promise<LocalIdentityRecord | null> {
   const db = await getDB();
@@ -177,7 +221,7 @@ export async function clearLocalIdentityRecord(): Promise<void> {
 
 /**
  * Vacía los datos locales del usuario en el cierre de sesión: identidad,
- * minutos del día y perfil (GameState, calibración y teamCode).
+ * minutos del día, perfil (GameState, calibración y teamCode) y acarreo del día.
  *
  * Deja el navegador como recién instalado para que la siguiente persona no
  * herede XP, nivel, racha, minutos ni —sobre todo— una calibración hecha con
@@ -198,11 +242,14 @@ export async function clearLocalIdentityRecord(): Promise<void> {
  */
 export async function clearAllLocalUserData(): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction(['identity', 'minutes', 'profile'], 'readwrite');
+  const tx = db.transaction(['identity', 'minutes', 'profile', 'dayCarry'], 'readwrite');
   await Promise.all([
     tx.objectStore('identity').clear(),
     tx.objectStore('minutes').clear(),
     tx.objectStore('profile').clear(),
+    // El acarreo se va con los minutos que compensaba: al conceder el acceso se
+    // vuelve a sembrar desde la nube para el nick que entre.
+    tx.objectStore('dayCarry').clear(),
     tx.done,
   ]);
 }

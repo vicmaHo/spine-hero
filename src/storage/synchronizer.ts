@@ -1,6 +1,6 @@
 import type { Checkpoint } from '../contracts/sync';
 import { buildCheckpoint } from './checkpointBuilder';
-import { getDay, getProfile, getSyncedRecordId, setSyncedRecordId } from './db';
+import { getDay, getDayCarrySeconds, getProfile, getSyncedRecordId, setSyncedRecordId } from './db';
 import { todayLocalDate } from './dateKey';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
@@ -14,7 +14,7 @@ export interface SynchronizerDeps {
 }
 
 export interface SynchronizerConfig {
-  intervalMs: number;        // 300_000 (5 min)
+  intervalMs: number;        // 60_000 (1 min)
   maxRetries: number;        // 3
   baseRetryMs: number;       // 1_000
 }
@@ -25,8 +25,17 @@ export interface Synchronizer {
   syncNow(): Promise<void>;
 }
 
+/**
+ * Un minuto, que es la granularidad real del dato: `goodPostureSeconds` sale de
+ * las entradas de `minutes`, y el `minuteWriter` solo escribe una al cruzar un
+ * límite de minuto. Sincronizar más a menudo enviaría la misma cifra repetida.
+ *
+ * También encaja con el margen del Validador_AntiTrampa: en 60 s entra como
+ * máximo un límite de minuto, así que el incremento es ≤ 60 s frente al tope de
+ * `elapsed × 1.1` que impone la regla INCREMENT_VS_ELAPSED.
+ */
 const DEFAULT_CONFIG: SynchronizerConfig = {
-  intervalMs: 300_000,
+  intervalMs: 60_000,
   maxRetries: 3,
   baseRetryMs: 1_000,
 };
@@ -105,7 +114,16 @@ export function createSynchronizer(
       // Sin perfil no podemos construir checkpoint
       if (profile === null) return;
 
-      const checkpoint: Checkpoint = buildCheckpoint(today, minutes, profile, profile.teamCode);
+      // Acarreo: lo que la nube ya tenía de este nick y este día al conceder el
+      // acceso. Vale 0 salvo justo después de reentrar tras cerrar sesión.
+      const carried = await getDayCarrySeconds(today);
+      const checkpoint: Checkpoint = buildCheckpoint(
+        today,
+        minutes,
+        profile,
+        profile.teamCode,
+        carried,
+      );
 
       // `authMode` explícito: sin sesión de Cognito, las Credenciales_Invitado
       // son las únicas con las que el Sincronizador puede escribir (Req 13.2).
@@ -202,7 +220,7 @@ export function createSynchronizer(
     document.addEventListener('visibilitychange', onHidden);
     window.addEventListener('pagehide', onPageHide);
     // Primer sync inmediato al arrancar (típicamente justo tras el login),
-    // en vez de esperar al primer tick del intervalo (5 min).
+    // en vez de esperar al primer tick del intervalo.
     void syncNow();
   }
 

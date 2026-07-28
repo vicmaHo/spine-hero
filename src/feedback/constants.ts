@@ -13,10 +13,27 @@ export const MOOD_TINT: Record<PetMood, { color: string; alpha: number }> = {
   faint: { color: '#888888', alpha: 0.35 },
 };
 
+/**
+ * Tinte de ausencia, gris apagado.
+ *
+ * No es un `PetMood` porque `AWAY` es un `PostureStatus`, y el motor congela
+ * el mood mientras el usuario no está (no se le penaliza por levantarse). Sin
+ * esto la mascota se quedaba con la cara que tuviera al irse, dando a entender
+ * que sigue midiendo. Lo aplica el renderer a partir del último frame.
+ */
+export const AWAY_TINT = { color: '#9A9A9A', alpha: 0.55 };
+
 // HUD
-export const HUD_HEIGHT = 32;
+// 48px = 3 filas: corazones/nivel/Flow, barra de XP y puntaje de postura.
+export const HUD_HEIGHT = 48;
 export const HEARTS_COUNT = 5;
 export const HP_PER_HEART = 20;
+
+// Puntaje de postura en el HUD
+export const SCORE_SEGMENTS = 10;
+export const SCORE_SEG_WIDTH = 7;
+export const SCORE_SEG_GAP = 1;
+export const SCORE_SEG_HEIGHT = 7;
 
 // Audio
 // Attack algo más largo que un click seco para evitar el chasquido inicial.

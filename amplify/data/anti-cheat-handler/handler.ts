@@ -41,6 +41,19 @@ const dailyRecordWriter: DailyRecordWriter = {
     }
     return { id: data.id, date: data.date, goodPostureSeconds: data.goodPostureSeconds };
   },
+  async findById(id) {
+    const { data, errors } = await client.models.DailyRecord.get(
+      { id },
+      { selectionSet: ['id', 'goodPostureSeconds', 'longestFlowStreak', 'level', 'xp'] as const },
+    );
+    // Se lanza en vez de devolver null: con null el `update` seguiría adelante
+    // sin suelo monótono y podría rebajar la fila. El mensaje no lleva el token
+    // ANTICHEAT_REJECT, así que el Sincronizador lo reintenta (Req 13.13).
+    if (errors?.length) {
+      throw new Error(`No se pudo leer el DailyRecord ${id}: ${errors[0]?.message ?? 'desconocido'}`);
+    }
+    return data ?? null;
+  },
   async findExisting(displayName, date) {
     const { data, errors } = await client.models.DailyRecord.listByNameAndDate(
       { displayName, date: { eq: date } },

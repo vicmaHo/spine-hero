@@ -2,6 +2,35 @@ import { useEffect, type ReactNode } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { NickForm } from './NickForm';
 
+/**
+ * Puerta de escape SOLO para desarrollo: entra directo al Dashboard saltándose
+ * el Formulario_Acceso. Existe porque el acceso necesita un
+ * `amplify_outputs.json` al día, y sin él no se puede trabajar en el dashboard.
+ *
+ * Doble condición a propósito:
+ *  - solo en localhost, así nunca se activa en el dominio desplegado;
+ *  - solo con la marca puesta a mano, así no se activa por accidente.
+ *
+ * Activar, en la consola del navegador:
+ *   localStorage.setItem('spinehero.devSkipNick', '1')
+ * Desactivar:
+ *   localStorage.removeItem('spinehero.devSkipNick')
+ *
+ * No toca la lógica de identidad: si la marca no está, el flujo es el normal.
+ */
+const DEV_SKIP_KEY = 'spinehero.devSkipNick';
+
+function shouldSkipNick(): boolean {
+  const { hostname } = window.location;
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1') return false;
+  try {
+    return localStorage.getItem(DEV_SKIP_KEY) === '1';
+  } catch {
+    // Almacenamiento bloqueado: se sigue el flujo normal.
+    return false;
+  }
+}
+
 interface NickGateProps {
   children: ReactNode;
   /** Vuelve a la landing desde el acceso. Sin esto el acceso no tiene salida. */
@@ -24,12 +53,36 @@ interface NickGateProps {
 export function NickGate({ children, onBack }: NickGateProps) {
   const identityPhase = useAppStore((s) => s.identityPhase);
   const bootstrapIdentity = useAppStore((s) => s.bootstrapIdentity);
+  const skipNick = shouldSkipNick();
 
   useEffect(() => {
+    // Con la marca de desarrollo puesta no se arranca la identidad: así no
+    // aparecen los errores de backend en consola mientras se trabaja offline.
+    if (skipNick) return;
     void bootstrapIdentity();
     // Solo al montar: `bootstrapIdentity` es una acción estable de Zustand.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (skipNick) {
+    return (
+      <>
+        {/* Aviso permanente: sin esto es fácil olvidar que el acceso está
+            saltado y confundirlo con un fallo del login. */}
+        <div
+          className="fixed bottom-3 left-3 z-[90] rounded-md border-2 border-[#241a10] px-3 py-2"
+          style={{
+            background: 'linear-gradient(180deg, #c4523c 0%, #932f22 100%)',
+            boxShadow: 'inset 0 2px 0 1px rgba(255,180,160,0.3), 0 3px 0 0 #5e1b12',
+          }}
+          role="status"
+        >
+          <span className="font-pixel text-[8px] text-white">ACCESO SALTADO (DEV)</span>
+        </div>
+        {children}
+      </>
+    );
+  }
 
   if (identityPhase === 'loading') {
     return (

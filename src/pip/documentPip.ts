@@ -1,7 +1,12 @@
-// Dimensiones de la ventana flotante. Proporción 128:160 del canvas para que
-// el avatar llene la ventana sin bandas laterales.
-export const PIP_WIDTH = 160;
-export const PIP_HEIGHT = 200;
+// Tamaño con el que se abre la ventana flotante la primera vez. Mantiene la
+// proporción 128:176 del canvas (sprite más la franja de HUD) para que el
+// avatar la llene sin bandas.
+//
+// Es solo el tamaño inicial: a partir de ahí el usuario la redimensiona a
+// mano y su elección se conserva (ver `openPipWindow`). El mínimo al que se
+// puede encoger lo decide el navegador, no esta página.
+export const PIP_WIDTH = 220;
+export const PIP_HEIGHT = 302;
 
 export interface PipWindowResult {
   pipWindow: Window;
@@ -51,7 +56,10 @@ export async function openPipWindow(): Promise<PipWindowResult> {
       width: PIP_WIDTH,
       height: PIP_HEIGHT,
       disallowReturnToOpener: true,
-      preferInitialWindowPlacement: true,
+      // Sin `preferInitialWindowPlacement`: así Chrome reutiliza el tamaño y
+      // la posición que el usuario dejó la última vez en lugar de volver
+      // siempre a PIP_WIDTH×PIP_HEIGHT. Redimensionarla a mano deja de ser
+      // un ajuste que se pierde al cerrar y reabrir.
     });
   } else {
     // Fallback (Firefox/Safari): aquí sí se puede posicionar abajo-izquierda
