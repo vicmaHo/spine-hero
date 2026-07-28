@@ -87,6 +87,10 @@ trabajando.
                                     pip/  ventana flotante              AppSync → DynamoDB
 ```
 
+Los diagramas completos —mapa del sistema, dependencias entre módulos, máquinas de
+estado, secuencias de alta y de sincronización, y modelo de datos— están en
+[`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
+
 ### Del píxel a la métrica
 
 De los 33 landmarks que devuelve MediaPipe se usan **cinco**: nariz, ambas
@@ -248,7 +252,7 @@ spine-hero/
 │  ├─ storage/           IndexedDB, identidad y sincronización
 │  ├─ store/             store de Zustand
 │  └─ ui/                landing, dashboard y componentes
-└─ docs/                 PRIVACY.md
+└─ docs/                 ARQUITECTURA.md y PRIVACY.md
 ```
 
 Las dependencias van en una sola dirección: `contracts/` no importa nada del
