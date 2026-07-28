@@ -1,0 +1,157 @@
+================================================================================
+SpineHero — Licencias de componentes de terceros
+================================================================================
+
+Este fichero recoge los avisos de copyright y los textos de licencia de los
+componentes de terceros que se redistribuyen dentro del artefacto publicado
+(el contenido de dist/ y los ficheros estáticos de public/).
+
+ALCANCE Y LIMITACIÓN
+--------------------------------------------------------------------------------
+Cubre las dependencias de tiempo de ejecución que el navegador descarga, más los
+recursos binarios servidos desde public/. NO cubre el conjunto transitivo
+completo del árbol de node_modules, ni las herramientas de construcción (Vite,
+Tailwind CSS, TypeScript, Vitest, ESLint) ni el toolchain de despliegue de
+Amplify, porque ninguno de ellos llega al usuario final.
+
+Esta lista está elaborada a mano y es un reflejo del estado en la fecha de
+redacción. Para una relación exhaustiva y siempre al día debe generarse a partir
+del grafo de módulos real que produce el empaquetado.
+
+
+================================================================================
+1. React y React DOM
+================================================================================
+Licencia: MIT
+
+MIT License
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+================================================================================
+2. Zustand
+================================================================================
+Licencia: MIT
+
+MIT License
+
+Copyright (c) 2019 Paul Henschel
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+================================================================================
+3. idb
+================================================================================
+Licencia: ISC
+
+ISC License (ISC)
+Copyright (c) 2016, Jake Archibald <jaffathecake@gmail.com>
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+
+
+================================================================================
+4. AWS Amplify (paquete npm `aws-amplify`)
+================================================================================
+Licencia: Apache License 2.0
+
+Copyright Amazon.com, Inc. o sus filiales. Todos los derechos reservados.
+
+Se importa desde el navegador (`aws-amplify/data`, `aws-amplify/auth`) para
+hablar con AppSync, por lo que forma parte del bundle desplegado.
+
+El texto completo de la Apache License 2.0 es el mismo que rige este proyecto y
+se incluye en el fichero LICENSE de esta distribución, tal como exige su
+sección 4(a). También está disponible en:
+https://www.apache.org/licenses/LICENSE-2.0
+
+El paquete no incluye fichero NOTICE propio, por lo que no hay avisos
+adicionales que reproducir bajo su sección 4(d).
+
+
+================================================================================
+5. MediaPipe Tasks Vision y el modelo Pose Landmarker
+================================================================================
+Licencia: Apache License 2.0
+
+Copyright 2023 The MediaPipe Authors (Google LLC)
+
+Componentes redistribuidos:
+  - public/wasm/vision_wasm_internal.js
+  - public/wasm/vision_wasm_internal.wasm
+  - public/wasm/vision_wasm_module_internal.js
+  - public/wasm/vision_wasm_module_internal.wasm
+  - public/models/pose_landmarker_lite.task
+  - el paquete npm @mediapipe/tasks-vision, incluido en el bundle
+
+El texto completo de la Apache License 2.0 se incluye en el fichero LICENSE de
+esta distribución, tal como exige su sección 4(a). También está disponible en:
+https://www.apache.org/licenses/LICENSE-2.0
+
+El paquete no incluye fichero NOTICE propio, por lo que no hay avisos
+adicionales que reproducir bajo su sección 4(d).
+
+
+================================================================================
+6. Tipografía Press Start 2P
+================================================================================
+Licencia: SIL Open Font License, Version 1.1
+
+Copyright 2012 The Press Start 2P Project Authors (cody@zone38.net),
+with Reserved Font Name "Press Start 2P".
+
+Fichero redistribuido: public/fonts/PressStart2P.ttf
+
+La cláusula 2 de la OFL exige que cada copia de la fuente vaya acompañada del
+aviso de copyright y del texto de la licencia. Ambos acompañan a la fuente en:
+
+  public/fonts/OFL.txt
+
+La cláusula 3 reserva el nombre: ninguna versión modificada de esta fuente
+puede seguir llamándose «Press Start 2P».

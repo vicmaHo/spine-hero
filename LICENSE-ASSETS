@@ -1,0 +1,90 @@
+RECURSOS DE MARCA Y CONTENIDO GRÁFICO DE SPINEHERO
+Todos los derechos reservados
+
+Copyright 2026 Víctor Manuel Hernández, Juan Camilo Pérez, Luis Miguel Becerra
+
+
+ALCANCE
+================================================================================
+
+El código fuente de este repositorio se distribuye bajo la Apache License 2.0
+(ver LICENSE). Esa licencia cubre el código y NO se extiende a los recursos
+enumerados más abajo, que son obra original de los autores y quedan
+expresamente fuera de su alcance.
+
+La Apache License 2.0, en su sección 6, ya excluye de forma explícita la
+concesión de cualquier derecho sobre nombres comerciales, marcas o marcas de
+servicio del licenciante. Este documento no añade restricciones al código: solo
+delimita qué obras no están licenciadas por él.
+
+
+RECURSOS RESERVADOS
+================================================================================
+
+1. El nombre «SpineHero» y «Spine Hero», en cualquier grafía o composición,
+   empleado como denominación de producto, de servicio o de dominio.
+
+2. El logotipo:
+   - src/assets/logo.png
+   - public/favicon.png
+
+3. El personaje (la mascota), su diseño, sus estados de ánimo y sus sprites:
+   - public/sprites/hero.png
+   - src/assets/hero.png
+
+4. Las ilustraciones, fondos y composiciones promocionales:
+   - src/assets/principal.png
+   - src/assets/principal2.png
+   - src/assets/feliz.png
+   - src/assets/triste.png
+   - src/assets/ausente.png
+   - src/assets/equipos.png
+   - src/assets/background-hero.png
+   - src/assets/background-dashboard.png
+
+
+CONDICIONES
+================================================================================
+
+Queda reservado todo derecho sobre los recursos anteriores. Sin permiso previo
+y por escrito de los titulares del copyright NO se autoriza:
+
+  a) su reproducción, distribución, comunicación pública o puesta a disposición,
+     total o parcial, fuera de este repositorio;
+  b) su modificación o la creación de obras derivadas a partir de ellos;
+  c) su uso para identificar, promocionar o distribuir un producto, servicio o
+     despliegue distinto del original de los autores;
+  d) el uso del nombre «SpineHero» o de un nombre confundible con él para
+     denominar una versión modificada o un despliegue de terceros.
+
+Se permite su visualización dentro del contexto de este repositorio y su
+reproducción con fines de cita, reseña, docencia o comentario, siempre que se
+identifique la autoría y no se induzca a confusión sobre el origen.
+
+
+CONSECUENCIA PRÁCTICA
+================================================================================
+
+Cualquiera puede ejercer los derechos que la Apache License 2.0 le concede
+sobre el código: estudiarlo, usarlo, modificarlo, redistribuirlo y desplegarlo,
+también con fines comerciales, cumpliendo sus condiciones de atribución y de
+conservación de avisos (ver NOTICE).
+
+Para hacerlo debe sustituir el nombre y los recursos gráficos enumerados en este
+documento por otros propios.
+
+
+EXCLUSIONES
+================================================================================
+
+Este documento cubre únicamente obras originales de los autores. Los recursos de
+terceros redistribuidos con el proyecto —el modelo y el runtime de MediaPipe, y
+la tipografía Press Start 2P— se rigen por sus propias licencias, detalladas en
+THIRD-PARTY-LICENSES.txt y en public/fonts/OFL.txt.
+
+
+CONTACTO
+================================================================================
+
+Para solicitar permisos, abrir una incidencia en el repositorio del proyecto:
+https://github.com/vicmaHo/spine-hero
