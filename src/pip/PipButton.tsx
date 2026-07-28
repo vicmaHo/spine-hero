@@ -60,19 +60,42 @@ export function PipButton() {
       setPipOpen(true);
 
       // Detectar cierre de la ventana PiP
+      let unsubscribeSession: (() => void) | null = null;
+      let torndown = false;
+
+      /** Limpieza única, venga el cierre de donde venga. */
+      const teardown = (): void => {
+        if (torndown) return;
+        torndown = true;
+        clearInterval(checkClosed);
+        unsubscribeSession?.();
+        root.unmount();
+        setPipOpen(false);
+      };
+
       const checkClosed = setInterval(() => {
-        if (pipWindow.closed) {
-          clearInterval(checkClosed);
-          root.unmount();
-          setPipOpen(false);
-        }
+        if (pipWindow.closed) teardown();
       }, 500);
 
       // También escuchar evento pagehide (Document PiP nativo)
-      pipWindow.addEventListener('pagehide', () => {
-        clearInterval(checkClosed);
-        root.unmount();
-        setPipOpen(false);
+      pipWindow.addEventListener('pagehide', teardown);
+
+      // Cierre de sesión: la ventana flotante se queda encima del IDE con la
+      // mascota de quien acaba de salir, así que hay que cerrarla.
+      //
+      // La suscripción es imperativa y no un `useEffect` a propósito: al cerrar
+      // sesión, `NickGate` cambia al Formulario_Acceso y desmonta el Dashboard
+      // con este botón dentro, así que un efecto no llegaría a ejecutarse. Esta
+      // suscripción sobrevive al desmontaje y la cancela `teardown`.
+      unsubscribeSession = useAppStore.subscribe((state, prev) => {
+        if (state.pipCloseRequestId === prev.pipCloseRequestId) return;
+        // Diferido: `close()` dispara `pagehide` de forma síncrona, y desmontar
+        // la raíz React de la ventana dentro de una notificación del store se
+        // solapa con el render que esa misma notificación provoca.
+        setTimeout(() => {
+          if (!pipWindow.closed) pipWindow.close();
+          teardown();
+        }, 0);
       });
     } catch {
       // El usuario canceló o el navegador bloqueó la ventana

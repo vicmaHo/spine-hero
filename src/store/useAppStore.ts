@@ -62,6 +62,16 @@ interface AppState {
   identityMessageField: 'nick' | 'email' | 'both' | null;
   emailTakenNick: string | null;        // habilita «Entrar con ese nick» (Req 3.3)
   localSaveFailed: boolean;             // aviso no bloqueante (Req 4.8)
+  /**
+   * Contador que se incrementa cuando la sesión termina y la ventana flotante
+   * debe cerrarse. Es una señal, no un estado: `pip/` la observa y cierra su
+   * ventana.
+   *
+   * El store no puede cerrarla él mismo porque no tiene (ni debe tener) el
+   * handle de la ventana: la dirección de dependencias es `pip/` → `store/`,
+   * nunca al revés.
+   */
+  pipCloseRequestId: number;
 
   // --- Acciones ---
   setSource: (type: SourceType) => void;
@@ -163,6 +173,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   identityMessageField: null,
   emailTakenNick: null,
   localSaveFailed: false,
+  pipCloseRequestId: 0,
 
   // --- Acciones ---
 
@@ -503,6 +514,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       identityMessageField: null,
       emailTakenNick: null,
       localSaveFailed: false,
+      // La ventana flotante seguiría mostrando la mascota de quien acaba de
+      // salir, encima del IDE y sin dashboard detrás al que volver.
+      pipCloseRequestId: get().pipCloseRequestId + 1,
       // Progreso en memoria a su valor inicial, en la misma acción que borra
       // IndexedDB: si no, la interfaz seguiría mostrando el XP y el nivel de
       // quien acaba de salir.
