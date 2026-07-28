@@ -30,7 +30,6 @@ landmarks permanecen dentro de él; la cruzan únicamente los enteros agregados 
 en el momento del alta, un nick y un correo.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','nodeBorder':'#5c4128','clusterBkg':'#fbf5e6','clusterBorder':'#c8ab74','edgeLabelBackground':'#f6e9c9','titleColor':'#3b2a1c'}}}%%
 flowchart TB
   subgraph EQ["Tu equipo · nada de esto sale a la red"]
     direction TB
@@ -81,7 +80,6 @@ cosmética: sin identidad activa, el sincronizador termina su ejecución antes d
 cualquier operación.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','nodeBorder':'#5c4128','clusterBkg':'#fbf5e6','clusterBorder':'#c8ab74','edgeLabelBackground':'#f6e9c9','titleColor':'#3b2a1c'}}}%%
 flowchart LR
   U(("Usuario"))
   subgraph SIN["Sin nick · identityPhase: guest"]
@@ -119,7 +117,6 @@ La navegación se compone de dos máquinas de estados anidadas: la de la vista, 
 `App.tsx`, y la de la fase de identidad, que `NickGate` gobierna sobre `identityPhase`.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','nodeBorder':'#5c4128','clusterBkg':'#fbf5e6','clusterBorder':'#c8ab74','compositeBackground':'#fbf5e6','compositeBorder':'#c8ab74','compositeTitleBackground':'#efdcb4','noteBkgColor':'#efdcb4','noteBorderColor':'#8a6239','noteTextColor':'#3b2a1c','labelBackgroundColor':'#f6e9c9'}}}%%
 stateDiagram-v2
   direction TB
   [*] --> landing
@@ -166,7 +163,6 @@ El grafo se deriva de los `import` relativos de todos los ficheros `.ts` y `.tsx
 de prueba.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','nodeBorder':'#5c4128','clusterBkg':'#fbf5e6','clusterBorder':'#c8ab74','edgeLabelBackground':'#f6e9c9','titleColor':'#3b2a1c'}}}%%
 flowchart TD
   RT["main.tsx · App.tsx"]
   UI["ui/<br/>landing, dashboard, ranking"]
@@ -188,17 +184,13 @@ flowchart TD
   VI --> CT
   PO --> CT
   GA --> CT
-  classDef puro fill:#e8f0dd,stroke:#5e8c42,color:#1d3524
-  classDef sumidero fill:#e2c793,stroke:#9c7420,color:#3b2a1c
-  class PO,GA puro
-  class CT sumidero
 ```
 
 Las propiedades que sostienen esta organización son cuatro:
 
 - `contracts/` no importa nada del proyecto. Es el sumidero del grafo, y esa condición es
   la que le permite actuar como idioma común entre módulos sin introducir ciclos.
-- `posture/` y `game/`, en verde, dependen únicamente de `contracts/`. Al ser funciones
+- `posture/` y `game/` dependen únicamente de `contracts/`. Al ser funciones
   puras, pueden probarse contra los fixtures sin cámara ni navegador.
 - El store es el único módulo que conoce simultáneamente `vision/` y `posture/`. Crea el
   `CameraSource` y lo inyecta en `createPostureSource(source)` como un `LandmarkSource`,
@@ -220,7 +212,6 @@ La secuencia siguiente describe el ciclo que se repite cinco veces por segundo, 
 captura de la webcam hasta la actualización de la mascota.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','actorBkg':'#f6e9c9','actorBorder':'#5c4128','actorTextColor':'#3b2a1c','actorLineColor':'#8a6239','signalColor':'#5c4128','signalTextColor':'#3b2a1c','labelBoxBkgColor':'#e2c793','labelBoxBorderColor':'#5c4128','labelTextColor':'#3b2a1c','loopTextColor':'#3b2a1c','noteBkgColor':'#efdcb4','noteBorderColor':'#8a6239','noteTextColor':'#3b2a1c','activationBkgColor':'#e2c793','activationBorderColor':'#8a6239','sequenceNumberColor':'#3b2a1c','altBackground':'#fbf5e6'}}}%%
 sequenceDiagram
   participant C as vision/cameraSource
   participant W as Web Worker
@@ -268,7 +259,6 @@ La máquina define cuatro estados y una regla común a todos ellos: ninguna tran
 inmediata.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','nodeBorder':'#5c4128','clusterBkg':'#fbf5e6','clusterBorder':'#c8ab74','compositeBackground':'#fbf5e6','compositeBorder':'#c8ab74','compositeTitleBackground':'#efdcb4','noteBkgColor':'#efdcb4','noteBorderColor':'#8a6239','noteTextColor':'#3b2a1c','labelBackgroundColor':'#f6e9c9'}}}%%
 stateDiagram-v2
   direction LR
   [*] --> GOOD
@@ -296,7 +286,6 @@ para volver, y además cada transición debe sostenerse durante un tiempo mínim
 mecanismo es idéntico en todos los casos:
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','nodeBorder':'#5c4128','clusterBkg':'#fbf5e6','clusterBorder':'#c8ab74','compositeBackground':'#fbf5e6','compositeBorder':'#c8ab74','compositeTitleBackground':'#efdcb4','noteBkgColor':'#efdcb4','noteBorderColor':'#8a6239','noteTextColor':'#3b2a1c','labelBackgroundColor':'#f6e9c9'}}}%%
 stateDiagram-v2
   direction LR
   state "status actual" as A
@@ -325,7 +314,6 @@ sobre la clave de partición de `NickClaim` y `EmailClaim`: un `create` con una 
 existente falla en el servidor y no deja registro parcial.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','actorBkg':'#f6e9c9','actorBorder':'#5c4128','actorTextColor':'#3b2a1c','actorLineColor':'#8a6239','signalColor':'#5c4128','signalTextColor':'#3b2a1c','labelBoxBkgColor':'#e2c793','labelBoxBorderColor':'#5c4128','labelTextColor':'#3b2a1c','loopTextColor':'#3b2a1c','noteBkgColor':'#efdcb4','noteBorderColor':'#8a6239','noteTextColor':'#3b2a1c','activationBkgColor':'#e2c793','activationBorderColor':'#8a6239','sequenceNumberColor':'#3b2a1c','altBackground':'#fbf5e6'}}}%%
 sequenceDiagram
   participant F as ui/NickForm
   participant I as storage/identityService
@@ -377,7 +365,6 @@ Entrar con un nick ya creado exige el correo con el que se reclamó. Esta compro
 constituye la capa de verificación de titularidad.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','actorBkg':'#f6e9c9','actorBorder':'#5c4128','actorTextColor':'#3b2a1c','actorLineColor':'#8a6239','signalColor':'#5c4128','signalTextColor':'#3b2a1c','labelBoxBkgColor':'#e2c793','labelBoxBorderColor':'#5c4128','labelTextColor':'#3b2a1c','loopTextColor':'#3b2a1c','noteBkgColor':'#efdcb4','noteBorderColor':'#8a6239','noteTextColor':'#3b2a1c','activationBkgColor':'#e2c793','activationBorderColor':'#8a6239','sequenceNumberColor':'#3b2a1c','altBackground':'#fbf5e6'}}}%%
 sequenceDiagram
   participant F as ui/NickForm
   participant I as storage/identityService
@@ -426,7 +413,6 @@ puesto que DynamoDB no las contempla: las relaciones del diagrama son lógicas y
 sostiene el código de aplicación.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','nodeBorder':'#5c4128','clusterBkg':'#fbf5e6','clusterBorder':'#c8ab74','compositeBackground':'#fbf5e6','compositeBorder':'#c8ab74','compositeTitleBackground':'#efdcb4','noteBkgColor':'#efdcb4','noteBorderColor':'#8a6239','noteTextColor':'#3b2a1c','labelBackgroundColor':'#f6e9c9','attributeBackgroundColorOdd':'#f6e9c9','attributeBackgroundColorEven':'#efdcb4'}}}%%
 erDiagram
   UserIdentity {
     ID id PK "uuid generado en el navegador"
@@ -496,7 +482,6 @@ El recorrido de un minuto registrado en local hasta el ranking pasa por el vered
 servidor.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','actorBkg':'#f6e9c9','actorBorder':'#5c4128','actorTextColor':'#3b2a1c','actorLineColor':'#8a6239','signalColor':'#5c4128','signalTextColor':'#3b2a1c','labelBoxBkgColor':'#e2c793','labelBoxBorderColor':'#5c4128','labelTextColor':'#3b2a1c','loopTextColor':'#3b2a1c','noteBkgColor':'#efdcb4','noteBorderColor':'#8a6239','noteTextColor':'#3b2a1c','activationBkgColor':'#e2c793','activationBorderColor':'#8a6239','sequenceNumberColor':'#3b2a1c','altBackground':'#fbf5e6'}}}%%
 sequenceDiagram
   participant B as IndexedDB
   participant S as storage/synchronizer
@@ -563,7 +548,6 @@ orden. La secuencia es obligatoria: `amplify_outputs.json` lo genera la fase de 
 compila.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#f6e9c9','primaryTextColor':'#3b2a1c','primaryBorderColor':'#5c4128','secondaryColor':'#efdcb4','tertiaryColor':'#fbf5e6','lineColor':'#8a6239','textColor':'#3b2a1c','mainBkg':'#f6e9c9','nodeBorder':'#5c4128','clusterBkg':'#fbf5e6','clusterBorder':'#c8ab74','edgeLabelBackground':'#f6e9c9','titleColor':'#3b2a1c'}}}%%
 flowchart TB
   PUSH["git push origin main"] --> GH["GitHub"]
   GH --> AH["Amplify Hosting"]
