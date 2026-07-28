@@ -70,6 +70,15 @@ export interface DailyRecordWriter {
    * sesión, y cada pérdida creaba una fila más del mismo nick el mismo día.
    */
   findExisting(displayName: string, date: string): Promise<ExistingDailyRecord | null>;
+  /**
+   * Fila con ese `id`, o null si ya no existe.
+   *
+   * Es la lectura que permite aplicar el suelo monótono también cuando el
+   * cliente manda `id`. Tiene que ser una lectura del servidor: usar el
+   * `previousGoodPostureSeconds` que viaja en la mutación abriría un agujero,
+   * porque lo declara el cliente y `keepMonotonic` lo persistiría tal cual.
+   */
+  findById(id: string): Promise<ExistingDailyRecord | null>;
 }
 
 /**
@@ -177,10 +186,16 @@ export async function handleValidatedUpdate(
 
   // El id que manda el cliente tiene prioridad: es el único caso en que la fila
   // a actualizar puede tener un `displayName` distinto del que llega, que es lo
-  // que ocurre justo después de un cambio de nick (Req 5.8). La consulta va
+  // que ocurre justo después de un cambio de nick (Req 5.8). Las consultas van
   // después del veredicto: una escritura rechazada no gasta una lectura.
+  //
+  // El suelo monótono se aplica aquí también, no solo en la rama sin id: al
+  // reentrar el mismo día tras cerrar sesión, el cliente conserva su puntero
+  // local y manda `id` con los contadores a cero, y sin esta lectura ese
+  // `update` machacaba la fila del ranking.
   if (id) {
-    return writer.update(id, fields);
+    const stored = await writer.findById(id);
+    return writer.update(id, stored === null ? fields : keepMonotonic(fields, stored));
   }
 
   // Sin id (primer envío del día, puntero local perdido, otro navegador) la

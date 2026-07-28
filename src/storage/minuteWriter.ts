@@ -4,7 +4,12 @@ import { openSpineHeroDB } from './db';
 
 export interface MinuteWriter {
   push(frame: PostureFrame): void;
-  stop(): void;
+  /**
+   * Para el timer y vuelca el minuto parcial. Devuelve la promesa de esa
+   * escritura para que quien necesite leer los minutos justo después (el
+   * Sincronizador al cerrar sesión) pueda esperarla en vez de competir con ella.
+   */
+  stop(): Promise<void>;
 }
 
 /** Minuto actual del día (0-1439) a partir del reloj del sistema. */
@@ -48,9 +53,9 @@ export function startMinuteWriter(): MinuteWriter {
     push(frame: PostureFrame): void {
       buffer.push(frame);
     },
-    stop(): void {
+    stop(): Promise<void> {
       clearInterval(intervalId);
-      flushAndWrite();
+      return flushAndWrite();
     },
   };
 }

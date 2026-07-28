@@ -16,6 +16,8 @@ import { createSynchronizer } from '../storage/synchronizer';
 import type { Synchronizer } from '../storage/synchronizer';
 import { loadLocalIdentity } from '../storage/identityLocal';
 import { clearAllLocalUserData } from '../storage/db';
+import { seedDayCarryFromCloud } from '../storage/dayCarry';
+import { todayLocalDate } from '../storage/dateKey';
 import { createIdentityService } from '../storage/identityService';
 import { createRealIdentityClient, ensureGuestSession } from '../storage/identityClient';
 import type { ActiveIdentity, IdentityError } from '../storage/identityErrors';
@@ -251,7 +253,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       _landmarksUnsub = null;
     }
     if (_minuteWriter) {
-      _minuteWriter.stop();
+      void _minuteWriter.stop();
       _minuteWriter = null;
     }
     if (_sourceInstance) {
@@ -318,7 +320,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  // Fuerza un checkpoint inmediato (para verificación/manual; el automático es cada 5 min).
+  // Fuerza un checkpoint inmediato (para verificación/manual; el automático es cada minuto).
   syncNow: async () => {
     await _synchronizer?.syncNow();
   },
@@ -414,6 +416,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         identityMessageField: null,
         localSaveFailed,
       });
+
+      // Solo en el acceso con nick existente: es el único camino en el que la
+      // nube puede tener segundos de hoy que los minutos locales ya no tienen
+      // (reentrada tras cerrar sesión, u otro navegador). En el alta el nick es
+      // nuevo y no puede haber fila suya, y en el cambio de nick los minutos
+      // locales siguen intactos, así que sembrar acarreo contaría doble.
+      // Antes de arrancar el Sincronizador, para que su primer envío ya lo lleve.
+      await seedDayCarryFromCloud(result.value.nick, todayLocalDate());
       startSynchronizerForIdentity();
       return;
     }
@@ -466,7 +476,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     // se borra, y solo entonces se reinicia el estado en memoria. Al revés, el
     // primer frame posterior al borrado volvería a guardar el GameState viejo
     // por el debounce de `pushFrame`.
+    //
+    // El minuto en curso se vuelca aquí, antes de `stop()`, para poder esperar
+    // su escritura: `stop()` anula la referencia y la promesa se perdería.
+    const pendingMinute = _minuteWriter?.stop() ?? Promise.resolve();
+    _minuteWriter = null;
+
     if (get().isRunning) get().stop();
+    await pendingMinute;
+
+    // Última sincronización antes de borrar. `Synchronizer.stop()` no
+    // sincroniza, así que sin esto el tramo acumulado desde el ciclo anterior
+    // se perdía a la vez del local y del ranking.
+    if (_synchronizer) await _synchronizer.syncNow();
 
     _synchronizer?.stop();
     _synchronizer = null;

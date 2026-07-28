@@ -132,3 +132,32 @@ describe('buildCheckpoint · racha de flow', () => {
     });
   });
 });
+
+describe('buildCheckpoint · acarreo del día', () => {
+  const entries = [minute(10, 'GOOD', 60), minute(11, 'GOOD', 45)]; // 105 s locales
+
+  it('sin acarreo cuenta solo los minutos locales', () => {
+    expect(buildCheckpoint('2025-01-15', entries, makeProfile()).goodPostureSeconds).toBe(105);
+  });
+
+  it('suma el acarreo a los segundos de buena postura', () => {
+    // Reentrada tras cerrar sesión: la nube ya tenía 289 s de este nick hoy.
+    const checkpoint = buildCheckpoint('2025-01-15', entries, makeProfile(), undefined, 289);
+
+    expect(checkpoint.goodPostureSeconds).toBe(289 + 105);
+  });
+
+  it('con los minutos locales vacíos, el checkpoint es el acarreo', () => {
+    const checkpoint = buildCheckpoint('2025-01-15', [], makeProfile(), undefined, 289);
+
+    expect(checkpoint.goodPostureSeconds).toBe(289);
+  });
+
+  it('el acarreo no altera avgScore ni la racha de flow', () => {
+    const sinAcarreo = buildCheckpoint('2025-01-15', entries, makeProfile());
+    const conAcarreo = buildCheckpoint('2025-01-15', entries, makeProfile(), undefined, 289);
+
+    expect(conAcarreo.avgScore).toBe(sinAcarreo.avgScore);
+    expect(conAcarreo.longestFlowStreak).toBe(sinAcarreo.longestFlowStreak);
+  });
+});

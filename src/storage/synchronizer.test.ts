@@ -15,6 +15,7 @@ const h = vi.hoisted(() => ({
   getProfileMock: vi.fn(),
   getSyncedRecordIdMock: vi.fn(),
   setSyncedRecordIdMock: vi.fn(),
+  getDayCarrySecondsMock: vi.fn(),
 }));
 
 vi.mock('aws-amplify/data', () => ({
@@ -33,6 +34,7 @@ vi.mock('./db', () => ({
   getProfile: h.getProfileMock,
   getSyncedRecordId: h.getSyncedRecordIdMock,
   setSyncedRecordId: h.setSyncedRecordIdMock,
+  getDayCarrySeconds: h.getDayCarrySecondsMock,
 }));
 
 import { createSynchronizer, ANTICHEAT_REJECT_TOKEN } from './synchronizer';
@@ -80,6 +82,8 @@ beforeEach(() => {
   h.getProfileMock.mockResolvedValue(makeProfile());
   h.getSyncedRecordIdMock.mockResolvedValue(null);
   h.setSyncedRecordIdMock.mockResolvedValue(undefined);
+  // Sin acarreo salvo en el test que lo comprueba: es el caso normal.
+  h.getDayCarrySecondsMock.mockResolvedValue(0);
 
   // Respuestas de la nube por defecto: todo pasa por la mutación validada
   h.getMock.mockResolvedValue({
@@ -141,6 +145,21 @@ describe('synchronizer · upsert de DailyRecord vía la mutación validada', () 
 
     expect(h.validateMutationMock).toHaveBeenCalledWith(
       expect.objectContaining({ displayName: activeIdentity.nick }),
+    );
+  });
+
+  it('suma el acarreo del día a los segundos que envía', async () => {
+    // Reentrada tras cerrar sesión: 289 s en la nube y 60 s medidos desde entonces.
+    h.getDayCarrySecondsMock.mockResolvedValue(289);
+    h.getDayMock.mockResolvedValue([
+      { date: today, minute: 600, avgScore: 80, dominantStatus: 'GOOD', goodSeconds: 60 },
+    ] satisfies MinuteEntry[]);
+
+    const sync = createSynchronizer(deps);
+    await sync.syncNow();
+
+    expect(h.validateMutationMock).toHaveBeenCalledWith(
+      expect.objectContaining({ goodPostureSeconds: 349 }),
     );
   });
 });
